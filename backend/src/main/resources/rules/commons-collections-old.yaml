@@ -1,0 +1,9 @@
+id: commons-collections-old
+title: "Commons Collections 3.x"
+description: "Regra automática: Commons Collections 3.x"
+severity: HIGH
+dimension: SECURITY_POSTURE
+enabled: true
+condition:
+  type: dependency_matches
+  pattern: "commons-collections:commons-collections:3"

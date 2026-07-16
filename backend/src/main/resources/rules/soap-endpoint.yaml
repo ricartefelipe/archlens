@@ -1,0 +1,9 @@
+id: soap-endpoint
+title: "Endpoint SOAP legado"
+description: "Regra automática: Endpoint SOAP legado"
+severity: MEDIUM
+dimension: MODERNIZATION_READINESS
+enabled: true
+condition:
+  type: signal_present
+  signalName: "soap"

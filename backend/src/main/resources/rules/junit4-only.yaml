@@ -1,0 +1,9 @@
+id: junit4-only
+title: "JUnit 4 sem JUnit 5"
+description: "Regra automática: JUnit 4 sem JUnit 5"
+severity: MEDIUM
+dimension: MODERNIZATION_READINESS
+enabled: true
+condition:
+  type: dependency_matches
+  pattern: "junit:junit:4"

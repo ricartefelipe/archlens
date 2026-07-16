@@ -1,0 +1,172 @@
+{
+  "schemaVersion": "1.0.0",
+  "analyzerVersion": "1.0.0-test",
+  "generatedAt": "2026-07-16T12:00:00Z",
+  "contentHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "project": {
+    "rootName": "legacy-demo",
+    "buildSystems": ["MAVEN"],
+    "languages": ["Java"],
+    "javaVersionHint": "1.8"
+  },
+  "inventory": {
+    "modules": [
+      {"name": "legacy-demo", "path": ".", "buildSystem": "MAVEN"}
+    ],
+    "packages": [
+      {"name": "com.example.legacy", "fileCount": 12, "lineCount": 2400}
+    ],
+    "types": [
+      {
+        "fqn": "com.example.legacy.LegacyServlet",
+        "kind": "CLASS",
+        "packageName": "com.example.legacy",
+        "path": "src/main/java/com/example/legacy/LegacyServlet.java",
+        "lineCount": 450,
+        "annotations": ["WebServlet"]
+      }
+    ],
+    "endpoints": [
+      {
+        "type": "SERVLET",
+        "pathOrName": "/legacy",
+        "sourcePath": "src/main/java/com/example/legacy/LegacyServlet.java",
+        "evidenceId": "ev-endpoint-1"
+      },
+      {
+        "type": "SPRING_MVC",
+        "pathOrName": "/api/users",
+        "sourcePath": "src/main/java/com/example/legacy/UserController.java",
+        "evidenceId": "ev-endpoint-2"
+      }
+    ],
+    "persistence": [
+      {
+        "technology": "JDBC",
+        "name": "LegacyDao",
+        "sourcePath": "src/main/java/com/example/legacy/LegacyDao.java",
+        "evidenceId": "ev-pers-1"
+      }
+    ],
+    "messaging": [
+      {
+        "technology": "JMS",
+        "name": "OrderQueue",
+        "sourcePath": "src/main/java/com/example/legacy/JmsConfig.java",
+        "evidenceId": "ev-msg-1"
+      }
+    ]
+  },
+  "signals": [
+    {
+      "id": "sig-ejb",
+      "category": "EE",
+      "name": "ejb-stateless-bean",
+      "confidence": "HIGH",
+      "evidenceIds": ["ev-sig-1"]
+    },
+    {
+      "id": "sig-struts",
+      "category": "FRAMEWORK",
+      "name": "struts-action",
+      "confidence": "MEDIUM",
+      "evidenceIds": ["ev-sig-2"]
+    },
+    {
+      "id": "sig-java8",
+      "category": "BUILD",
+      "name": "java8-compiler-target",
+      "confidence": "HIGH",
+      "evidenceIds": ["ev-sig-3"]
+    },
+    {
+      "id": "sig-jdbc",
+      "category": "PERSISTENCE",
+      "name": "jdbc-direct",
+      "confidence": "HIGH",
+      "evidenceIds": ["ev-pers-1"]
+    },
+    {
+      "id": "sig-jms",
+      "category": "MESSAGING",
+      "name": "jms-listener",
+      "confidence": "MEDIUM",
+      "evidenceIds": ["ev-msg-1"]
+    },
+    {
+      "id": "sig-soap",
+      "category": "API",
+      "name": "soap-endpoint",
+      "confidence": "HIGH",
+      "evidenceIds": ["ev-sig-4"]
+    }
+  ],
+  "dependencies": [
+    {
+      "coordinates": "log4j:log4j:1.2.17",
+      "scope": "compile",
+      "sourcePath": "pom.xml"
+    },
+    {
+      "coordinates": "commons-collections:commons-collections:3.2.2",
+      "scope": "compile",
+      "sourcePath": "pom.xml"
+    },
+    {
+      "coordinates": "org.hibernate:hibernate-core:5.6.0.Final",
+      "scope": "compile",
+      "sourcePath": "pom.xml"
+    },
+    {
+      "coordinates": "junit:junit:4.13.2",
+      "scope": "test",
+      "sourcePath": "pom.xml"
+    }
+  ],
+  "hotspots": [
+    {
+      "path": "src/main/java/com/example/legacy/GodClass.java",
+      "lineCount": 3200,
+      "reason": "GOD_CLASS",
+      "evidenceId": "ev-hot-1"
+    },
+    {
+      "path": "src/main/java/com/example/legacy/BigFile.java",
+      "lineCount": 1800,
+      "reason": "LARGE_FILE",
+      "evidenceId": "ev-hot-2"
+    }
+  ],
+  "cycles": [
+    {
+      "packages": ["com.example.a", "com.example.b"],
+      "evidenceIds": ["ev-cycle-1"]
+    }
+  ],
+  "secrets": [
+    {
+      "type": "PASSWORD",
+      "path": "src/main/resources/application.properties",
+      "line": 12,
+      "valueHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "type": "API_KEY",
+      "path": "src/main/java/com/example/legacy/Config.java",
+      "line": 8,
+      "valueHash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+  ],
+  "evidences": [
+    {"id": "ev-sig-1", "path": "src/main/java/com/example/legacy/OrderBean.java", "kind": "PATTERN", "locator": "@Stateless"},
+    {"id": "ev-endpoint-1", "path": "src/main/java/com/example/legacy/LegacyServlet.java", "kind": "PATTERN", "locator": "@WebServlet"}
+  ],
+  "metrics": {
+    "fileCount": 120,
+    "javaFileCount": 95,
+    "lineCount": 55000,
+    "typeCount": 250,
+    "testFileCount": 3,
+    "dependencyCount": 95
+  }
+}

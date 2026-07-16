@@ -1,0 +1,9 @@
+id: hotspot-large-file
+title: "Arquivo muito grande"
+description: "Regra automática: Arquivo muito grande"
+severity: MEDIUM
+dimension: OPERATIONAL_COMPLEXITY
+enabled: true
+condition:
+  type: hotspot_present
+  reason: "LARGE_FILE"

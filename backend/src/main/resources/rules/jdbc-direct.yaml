@@ -1,0 +1,9 @@
+id: jdbc-direct
+title: "JDBC direto sem ORM"
+description: "Regra automática: JDBC direto sem ORM"
+severity: MEDIUM
+dimension: TECHNICAL_DEBT
+enabled: true
+condition:
+  type: signal_present
+  signalName: "jdbc-direct"

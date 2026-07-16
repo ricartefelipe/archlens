@@ -1,0 +1,8 @@
+id: package-cycle
+title: "Ciclo entre pacotes detectado"
+description: "Regra automática: Ciclo entre pacotes detectado"
+severity: HIGH
+dimension: TECHNICAL_DEBT
+enabled: true
+condition:
+  type: cycle_present

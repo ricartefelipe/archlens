@@ -1,0 +1,9 @@
+id: hotspot-god-class
+title: "God class identificada"
+description: "Regra automática: God class identificada"
+severity: HIGH
+dimension: TECHNICAL_DEBT
+enabled: true
+condition:
+  type: hotspot_present
+  reason: "GOD_CLASS"

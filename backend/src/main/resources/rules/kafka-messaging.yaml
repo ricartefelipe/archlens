@@ -1,0 +1,9 @@
+id: kafka-messaging
+title: "Kafka detectado"
+description: "Regra automática: Kafka detectado"
+severity: INFO
+dimension: MODERNIZATION_READINESS
+enabled: true
+condition:
+  type: signal_present
+  signalName: "kafka"

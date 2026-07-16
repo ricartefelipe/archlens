@@ -1,0 +1,9 @@
+id: log4j-1x
+title: "Log4j 1.x vulnerável"
+description: "Regra automática: Log4j 1.x vulnerável"
+severity: HIGH
+dimension: SECURITY_POSTURE
+enabled: true
+condition:
+  type: dependency_matches
+  pattern: "log4j:log4j"

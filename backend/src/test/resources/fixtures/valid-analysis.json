@@ -1,0 +1,312 @@
+{
+  "schemaVersion": "1.0.0",
+  "analyzerVersion": "0.1.0-SNAPSHOT",
+  "generatedAt": "2026-07-16T12:00:00Z",
+  "contentHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "project": {
+    "rootName": "legacy-java-demo",
+    "buildSystems": [
+      "MAVEN"
+    ],
+    "languages": [
+      "Java"
+    ],
+    "javaVersionHint": "1.8"
+  },
+  "inventory": {
+    "modules": [
+      {
+        "name": "legacy-java-demo",
+        "path": ".",
+        "buildSystem": "MAVEN"
+      }
+    ],
+    "packages": [
+      {
+        "name": "com.demo.billing",
+        "fileCount": 2,
+        "lineCount": 120
+      }
+    ],
+    "types": [
+      {
+        "fqn": "com.demo.billing.BillingService",
+        "kind": "CLASS",
+        "packageName": "com.demo.billing",
+        "path": "src/main/java/com/demo/billing/BillingService.java",
+        "lineCount": 80,
+        "annotations": [
+          "Stateless"
+        ]
+      }
+    ],
+    "endpoints": [
+      {
+        "type": "JAX_RS",
+        "pathOrName": "/orders",
+        "sourcePath": "src/main/java/com/demo/orders/OrderResource.java",
+        "evidenceId": "ev-1"
+      },
+      {
+        "type": "SOAP",
+        "pathOrName": "LegacySoapService",
+        "sourcePath": "src/main/java/com/demo/integration/LegacySoapService.java",
+        "evidenceId": "ev-2"
+      }
+    ],
+    "persistence": [
+      {
+        "technology": "JPA",
+        "name": "Order",
+        "sourcePath": "src/main/java/com/demo/orders/Order.java",
+        "evidenceId": "ev-3"
+      }
+    ],
+    "messaging": [
+      {
+        "technology": "JMS",
+        "name": "OrderQueueListener",
+        "sourcePath": "src/main/java/com/demo/messaging/OrderQueueListener.java",
+        "evidenceId": "ev-4"
+      }
+    ]
+  },
+  "signals": [
+    {
+      "id": "sig-ejb",
+      "category": "EE",
+      "name": "EE_EJB",
+      "confidence": "HIGH",
+      "evidenceIds": [
+        "ev-5"
+      ]
+    },
+    {
+      "id": "sig-jpa",
+      "category": "PERSISTENCE",
+      "name": "PERSISTENCE_JPA",
+      "confidence": "HIGH",
+      "evidenceIds": [
+        "ev-3"
+      ]
+    },
+    {
+      "id": "sig-jms",
+      "category": "MESSAGING",
+      "name": "MESSAGING_JMS",
+      "confidence": "HIGH",
+      "evidenceIds": [
+        "ev-4"
+      ]
+    },
+    {
+      "id": "sig-sysout",
+      "category": "QUALITY",
+      "name": "QUALITY_SYSTEM_OUT",
+      "confidence": "MEDIUM",
+      "evidenceIds": [
+        "ev-6"
+      ]
+    },
+    {
+      "id": "sig-maven",
+      "category": "BUILD",
+      "name": "BUILD_MAVEN",
+      "confidence": "HIGH",
+      "evidenceIds": [
+        "ev-7"
+      ]
+    },
+    {
+      "id": "sig-ee",
+      "category": "EE",
+      "name": "EE_PLATFORM",
+      "confidence": "MEDIUM",
+      "evidenceIds": [
+        "ev-5"
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "coordinates": "javax.ejb:javax.ejb-api:3.2",
+      "scope": "compile",
+      "sourcePath": "pom.xml"
+    },
+    {
+      "coordinates": "javax.persistence:javax.persistence-api:2.2",
+      "scope": "compile",
+      "sourcePath": "pom.xml"
+    },
+    {
+      "coordinates": "javax.ws.rs:javax.ws.rs-api:2.1",
+      "scope": "compile",
+      "sourcePath": "pom.xml"
+    },
+    {
+      "coordinates": "javax.jms:javax.jms-api:2.0",
+      "scope": "compile",
+      "sourcePath": "pom.xml"
+    },
+    {
+      "coordinates": "javax.servlet:javax.servlet-api:4.0.1",
+      "scope": "provided",
+      "sourcePath": "pom.xml"
+    },
+    {
+      "coordinates": "com.sun.xml.ws:jaxws-rt:2.3.3",
+      "scope": "compile",
+      "sourcePath": "pom.xml"
+    },
+    {
+      "coordinates": "org.hibernate:hibernate-core:5.4.32.Final",
+      "scope": "compile",
+      "sourcePath": "pom.xml"
+    },
+    {
+      "coordinates": "com.h2database:h2:1.4.200",
+      "scope": "runtime",
+      "sourcePath": "pom.xml"
+    },
+    {
+      "coordinates": "log4j:log4j:1.2.17",
+      "scope": "compile",
+      "sourcePath": "pom.xml"
+    },
+    {
+      "coordinates": "commons-lang:commons-lang:2.6",
+      "scope": "compile",
+      "sourcePath": "pom.xml"
+    },
+    {
+      "coordinates": "commons-io:commons-io:2.6",
+      "scope": "compile",
+      "sourcePath": "pom.xml"
+    },
+    {
+      "coordinates": "com.google.guava:guava:28.0-jre",
+      "scope": "compile",
+      "sourcePath": "pom.xml"
+    },
+    {
+      "coordinates": "org.apache.commons:commons-lang3:3.9",
+      "scope": "compile",
+      "sourcePath": "pom.xml"
+    },
+    {
+      "coordinates": "javax.annotation:javax.annotation-api:1.3.2",
+      "scope": "compile",
+      "sourcePath": "pom.xml"
+    },
+    {
+      "coordinates": "javax.inject:javax.inject:1",
+      "scope": "compile",
+      "sourcePath": "pom.xml"
+    },
+    {
+      "coordinates": "javax.xml.ws:jaxws-api:2.3.1",
+      "scope": "compile",
+      "sourcePath": "pom.xml"
+    }
+  ],
+  "hotspots": [
+    {
+      "path": "src/main/java/com/demo/billing/BillingService.java",
+      "lineCount": 120,
+      "reason": "Large file",
+      "evidenceId": "ev-8"
+    }
+  ],
+  "cycles": [
+    {
+      "packages": [
+        "com.demo.billing",
+        "com.demo.orders"
+      ],
+      "evidenceIds": [
+        "ev-9"
+      ]
+    }
+  ],
+  "secrets": [
+    {
+      "type": "PASSWORD",
+      "path": "src/main/java/com/demo/config/LegacyConfig.java",
+      "line": 12,
+      "valueHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  ],
+  "evidences": [
+    {
+      "id": "ev-1",
+      "path": "src/main/java/com/demo/orders/OrderResource.java",
+      "kind": "PATTERN",
+      "locator": "line:1-20",
+      "snippetHash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "id": "ev-2",
+      "path": "src/main/java/com/demo/integration/LegacySoapService.java",
+      "kind": "PATTERN",
+      "locator": "line:1-20",
+      "snippetHash": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    {
+      "id": "ev-3",
+      "path": "src/main/java/com/demo/orders/Order.java",
+      "kind": "PATTERN",
+      "locator": "line:1-20",
+      "snippetHash": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    {
+      "id": "ev-4",
+      "path": "src/main/java/com/demo/messaging/OrderQueueListener.java",
+      "kind": "PATTERN",
+      "locator": "line:1-20",
+      "snippetHash": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    {
+      "id": "ev-5",
+      "path": "src/main/java/com/demo/billing/BillingService.java",
+      "kind": "PATTERN",
+      "locator": "line:1-20",
+      "snippetHash": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
+      "id": "ev-6",
+      "path": "src/main/java/com/demo/orders/OrderNotifier.java",
+      "kind": "PATTERN",
+      "locator": "line:1-20",
+      "snippetHash": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    {
+      "id": "ev-7",
+      "path": "pom.xml",
+      "kind": "MANIFEST",
+      "locator": "file",
+      "snippetHash": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    {
+      "id": "ev-8",
+      "path": "src/main/java/com/demo/billing/BillingService.java",
+      "kind": "FILE",
+      "locator": "lines:120",
+      "snippetHash": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    {
+      "id": "ev-9",
+      "path": "src/main/java/com/demo/billing/InvoiceProcessor.java",
+      "kind": "PATTERN",
+      "locator": "import-cycle",
+      "snippetHash": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+    }
+  ],
+  "metrics": {
+    "fileCount": 20,
+    "javaFileCount": 8,
+    "lineCount": 600,
+    "typeCount": 8,
+    "testFileCount": 0,
+    "dependencyCount": 16
+  }
+}

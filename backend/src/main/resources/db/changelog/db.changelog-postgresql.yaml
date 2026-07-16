@@ -1,0 +1,134 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-archlens-schema
+      author: archlens
+      dbms: postgresql
+      changes:
+        - sql:
+            splitStatements: true
+            sql: |
+              CREATE TABLE organization (
+                id UUID PRIMARY KEY, name VARCHAR(255) NOT NULL, created_at TIMESTAMPTZ NOT NULL
+              );
+              CREATE TABLE user_ref (
+                id UUID PRIMARY KEY, organization_id UUID NOT NULL REFERENCES organization(id),
+                external_id VARCHAR(255) NOT NULL, email VARCHAR(255), display_name VARCHAR(255),
+                roles VARCHAR(255) NOT NULL, created_at TIMESTAMPTZ NOT NULL,
+                CONSTRAINT uk_user_external UNIQUE (organization_id, external_id)
+              );
+              CREATE TABLE assessment (
+                id UUID PRIMARY KEY, organization_id UUID NOT NULL REFERENCES organization(id),
+                name VARCHAR(255) NOT NULL, description TEXT, status VARCHAR(32) NOT NULL,
+                project_root_name VARCHAR(255), created_by VARCHAR(255),
+                created_at TIMESTAMPTZ NOT NULL, updated_at TIMESTAMPTZ NOT NULL
+              );
+              CREATE TABLE analysis_import (
+                id UUID PRIMARY KEY, organization_id UUID NOT NULL REFERENCES organization(id),
+                assessment_id UUID NOT NULL REFERENCES assessment(id), idempotency_key VARCHAR(128) NOT NULL,
+                content_hash VARCHAR(80) NOT NULL, schema_version VARCHAR(32), analyzer_version VARCHAR(64),
+                raw_json TEXT NOT NULL, imported_at TIMESTAMPTZ NOT NULL,
+                CONSTRAINT uk_import_idempotency UNIQUE (organization_id, assessment_id, idempotency_key)
+              );
+              CREATE TABLE inventory_module (
+                id UUID PRIMARY KEY, assessment_id UUID NOT NULL REFERENCES assessment(id),
+                name VARCHAR(255) NOT NULL, path VARCHAR(512) NOT NULL, build_system VARCHAR(32) NOT NULL
+              );
+              CREATE TABLE inventory_package (
+                id UUID PRIMARY KEY, assessment_id UUID NOT NULL REFERENCES assessment(id),
+                name VARCHAR(512) NOT NULL, file_count INTEGER NOT NULL, line_count INTEGER NOT NULL
+              );
+              CREATE TABLE inventory_type (
+                id UUID PRIMARY KEY, assessment_id UUID NOT NULL REFERENCES assessment(id),
+                fqn VARCHAR(512) NOT NULL, kind VARCHAR(32) NOT NULL, package_name VARCHAR(512) NOT NULL,
+                path VARCHAR(512) NOT NULL, line_count INTEGER NOT NULL, annotations TEXT
+              );
+              CREATE TABLE inventory_endpoint (
+                id UUID PRIMARY KEY, assessment_id UUID NOT NULL REFERENCES assessment(id),
+                type VARCHAR(32) NOT NULL, path_or_name VARCHAR(512) NOT NULL,
+                source_path VARCHAR(512) NOT NULL, evidence_id VARCHAR(128) NOT NULL
+              );
+              CREATE TABLE inventory_persistence (
+                id UUID PRIMARY KEY, assessment_id UUID NOT NULL REFERENCES assessment(id),
+                technology VARCHAR(32) NOT NULL, name VARCHAR(512) NOT NULL,
+                source_path VARCHAR(512) NOT NULL, evidence_id VARCHAR(128) NOT NULL
+              );
+              CREATE TABLE inventory_messaging (
+                id UUID PRIMARY KEY, assessment_id UUID NOT NULL REFERENCES assessment(id),
+                technology VARCHAR(32) NOT NULL, name VARCHAR(512) NOT NULL,
+                source_path VARCHAR(512) NOT NULL, evidence_id VARCHAR(128) NOT NULL
+              );
+              CREATE TABLE inventory_signal (
+                id UUID PRIMARY KEY, assessment_id UUID NOT NULL REFERENCES assessment(id),
+                signal_id VARCHAR(128) NOT NULL, category VARCHAR(32) NOT NULL, name VARCHAR(255) NOT NULL,
+                confidence VARCHAR(16) NOT NULL, evidence_ids TEXT NOT NULL
+              );
+              CREATE TABLE inventory_dependency (
+                id UUID PRIMARY KEY, assessment_id UUID NOT NULL REFERENCES assessment(id),
+                coordinates VARCHAR(512) NOT NULL, scope VARCHAR(64) NOT NULL, source_path VARCHAR(512) NOT NULL
+              );
+              CREATE TABLE inventory_hotspot (
+                id UUID PRIMARY KEY, assessment_id UUID NOT NULL REFERENCES assessment(id),
+                path VARCHAR(512) NOT NULL, line_count INTEGER NOT NULL,
+                reason VARCHAR(255) NOT NULL, evidence_id VARCHAR(128) NOT NULL
+              );
+              CREATE TABLE inventory_cycle (
+                id UUID PRIMARY KEY, assessment_id UUID NOT NULL REFERENCES assessment(id),
+                packages TEXT NOT NULL, evidence_ids TEXT NOT NULL
+              );
+              CREATE TABLE inventory_secret (
+                id UUID PRIMARY KEY, assessment_id UUID NOT NULL REFERENCES assessment(id),
+                type VARCHAR(32) NOT NULL, path VARCHAR(512) NOT NULL,
+                line INTEGER NOT NULL, value_hash VARCHAR(80) NOT NULL
+              );
+              CREATE TABLE inventory_metrics (
+                id UUID PRIMARY KEY, assessment_id UUID NOT NULL UNIQUE REFERENCES assessment(id),
+                file_count INTEGER NOT NULL, java_file_count INTEGER NOT NULL, line_count INTEGER NOT NULL,
+                type_count INTEGER NOT NULL, test_file_count INTEGER NOT NULL, dependency_count INTEGER NOT NULL
+              );
+              CREATE TABLE finding (
+                id UUID PRIMARY KEY, organization_id UUID NOT NULL REFERENCES organization(id),
+                assessment_id UUID NOT NULL REFERENCES assessment(id), rule_id VARCHAR(64) NOT NULL,
+                title VARCHAR(512) NOT NULL, description TEXT NOT NULL, severity VARCHAR(16) NOT NULL,
+                status VARCHAR(32) NOT NULL, evidence_ids TEXT NOT NULL, dimension_key VARCHAR(64),
+                review_note TEXT, reviewed_by VARCHAR(255), reviewed_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ NOT NULL, updated_at TIMESTAMPTZ NOT NULL,
+                CONSTRAINT uk_finding_rule UNIQUE (assessment_id, rule_id)
+              );
+              CREATE TABLE questionnaire_answer (
+                id UUID PRIMARY KEY, organization_id UUID NOT NULL REFERENCES organization(id),
+                assessment_id UUID NOT NULL UNIQUE REFERENCES assessment(id),
+                questionnaire_version VARCHAR(32) NOT NULL, answers_json TEXT NOT NULL,
+                submitted_by VARCHAR(255) NOT NULL, submitted_at TIMESTAMPTZ NOT NULL
+              );
+              CREATE TABLE dimension_score (
+                id UUID PRIMARY KEY, organization_id UUID NOT NULL REFERENCES organization(id),
+                assessment_id UUID NOT NULL REFERENCES assessment(id), dimension_key VARCHAR(64) NOT NULL,
+                score NUMERIC(5,2) NOT NULL, rationale TEXT, updated_at TIMESTAMPTZ NOT NULL,
+                CONSTRAINT uk_dim_assessment_key UNIQUE (assessment_id, dimension_key)
+              );
+              CREATE TABLE modernization_option (
+                id UUID PRIMARY KEY, organization_id UUID NOT NULL REFERENCES organization(id),
+                assessment_id UUID NOT NULL REFERENCES assessment(id), title VARCHAR(255) NOT NULL,
+                description TEXT, effort VARCHAR(32), impact VARCHAR(32),
+                created_at TIMESTAMPTZ NOT NULL, updated_at TIMESTAMPTZ NOT NULL
+              );
+              CREATE TABLE roadmap_item (
+                id UUID PRIMARY KEY, organization_id UUID NOT NULL REFERENCES organization(id),
+                assessment_id UUID NOT NULL REFERENCES assessment(id), title VARCHAR(255) NOT NULL,
+                description TEXT, phase VARCHAR(64), sort_order INTEGER NOT NULL,
+                modernization_option_id UUID, created_at TIMESTAMPTZ NOT NULL, updated_at TIMESTAMPTZ NOT NULL
+              );
+              CREATE TABLE report_snapshot (
+                id UUID PRIMARY KEY, organization_id UUID NOT NULL REFERENCES organization(id),
+                assessment_id UUID NOT NULL REFERENCES assessment(id), version INTEGER NOT NULL,
+                content_hash VARCHAR(80) NOT NULL, html_content TEXT NOT NULL, pdf_content BYTEA,
+                published BOOLEAN NOT NULL DEFAULT FALSE, published_at TIMESTAMPTZ,
+                published_by VARCHAR(255), created_at TIMESTAMPTZ NOT NULL,
+                CONSTRAINT uk_report_version UNIQUE (assessment_id, version)
+              );
+              CREATE TABLE audit_event (
+                id UUID PRIMARY KEY, organization_id UUID NOT NULL REFERENCES organization(id),
+                assessment_id UUID, action VARCHAR(64) NOT NULL, actor VARCHAR(255) NOT NULL,
+                details TEXT, occurred_at TIMESTAMPTZ NOT NULL
+              );
+              CREATE INDEX idx_audit_org_time ON audit_event (organization_id, occurred_at);

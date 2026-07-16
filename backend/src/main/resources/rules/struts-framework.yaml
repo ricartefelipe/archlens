@@ -1,0 +1,9 @@
+id: struts-framework
+title: "Apache Struts detectado"
+description: "Regra automática: Apache Struts detectado"
+severity: HIGH
+dimension: TECHNICAL_DEBT
+enabled: true
+condition:
+  type: signal_present
+  signalName: "struts"

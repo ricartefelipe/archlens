@@ -1,0 +1,10 @@
+id: many-dependencies
+title: "Alto número de dependências"
+description: "Regra automática: Alto número de dependências"
+severity: MEDIUM
+dimension: OPERATIONAL_COMPLEXITY
+enabled: true
+condition:
+  type: metric_gt
+  metric: "dependencyCount"
+  threshold: 80

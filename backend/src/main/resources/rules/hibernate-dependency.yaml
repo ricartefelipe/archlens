@@ -1,0 +1,9 @@
+id: hibernate-dependency
+title: "Dependência Hibernate"
+description: "Regra automática: Dependência Hibernate"
+severity: MEDIUM
+dimension: TECHNICAL_DEBT
+enabled: true
+condition:
+  type: dependency_matches
+  pattern: "org.hibernate"
