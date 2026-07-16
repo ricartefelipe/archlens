@@ -1,0 +1,306 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://archlens.io/schemas/analysis.schema.json",
+  "title": "ArchLensAnalysis",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "analyzerVersion",
+    "generatedAt",
+    "contentHash",
+    "project",
+    "inventory",
+    "signals",
+    "dependencies",
+    "hotspots",
+    "cycles",
+    "secrets",
+    "metrics"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0.0" },
+    "analyzerVersion": { "type": "string", "minLength": 1 },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "contentHash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rootName", "buildSystems", "languages"],
+      "properties": {
+        "rootName": { "type": "string" },
+        "buildSystems": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["MAVEN", "GRADLE", "UNKNOWN"]
+          },
+          "uniqueItems": true
+        },
+        "languages": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+        "javaVersionHint": { "type": ["string", "null"] }
+      }
+    },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modules", "packages", "types", "endpoints", "persistence", "messaging"],
+      "properties": {
+        "modules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "path", "buildSystem"],
+            "properties": {
+              "name": { "type": "string" },
+              "path": { "type": "string" },
+              "buildSystem": {
+                "type": "string",
+                "enum": ["MAVEN", "GRADLE", "UNKNOWN"]
+              }
+            }
+          }
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "fileCount", "lineCount"],
+            "properties": {
+              "name": { "type": "string" },
+              "fileCount": { "type": "integer", "minimum": 0 },
+              "lineCount": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "types": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["fqn", "kind", "packageName", "path", "lineCount"],
+            "properties": {
+              "fqn": { "type": "string" },
+              "kind": {
+                "type": "string",
+                "enum": ["CLASS", "INTERFACE", "ENUM", "ANNOTATION", "RECORD", "UNKNOWN"]
+              },
+              "packageName": { "type": "string" },
+              "path": { "type": "string" },
+              "lineCount": { "type": "integer", "minimum": 0 },
+              "annotations": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        },
+        "endpoints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "pathOrName", "sourcePath", "evidenceId"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["JAX_RS", "SERVLET", "SPRING_MVC", "SOAP", "OTHER"]
+              },
+              "pathOrName": { "type": "string" },
+              "sourcePath": { "type": "string" },
+              "evidenceId": { "type": "string" }
+            }
+          }
+        },
+        "persistence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["technology", "name", "sourcePath", "evidenceId"],
+            "properties": {
+              "technology": {
+                "type": "string",
+                "enum": ["JPA", "JDBC", "MYBATIS", "OTHER"]
+              },
+              "name": { "type": "string" },
+              "sourcePath": { "type": "string" },
+              "evidenceId": { "type": "string" }
+            }
+          }
+        },
+        "messaging": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["technology", "name", "sourcePath", "evidenceId"],
+            "properties": {
+              "technology": {
+                "type": "string",
+                "enum": ["JMS", "KAFKA", "RABBITMQ", "OTHER"]
+              },
+              "name": { "type": "string" },
+              "sourcePath": { "type": "string" },
+              "evidenceId": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "signals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "category", "name", "confidence", "evidenceIds"],
+        "properties": {
+          "id": { "type": "string" },
+          "category": {
+            "type": "string",
+            "enum": [
+              "BUILD",
+              "FRAMEWORK",
+              "EE",
+              "PERSISTENCE",
+              "MESSAGING",
+              "API",
+              "UI",
+              "QUALITY",
+              "SECURITY",
+              "OTHER"
+            ]
+          },
+          "name": { "type": "string" },
+          "confidence": {
+            "type": "string",
+            "enum": ["HIGH", "MEDIUM", "LOW"]
+          },
+          "evidenceIds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          }
+        }
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["coordinates", "scope", "sourcePath"],
+        "properties": {
+          "coordinates": { "type": "string" },
+          "scope": { "type": "string" },
+          "sourcePath": { "type": "string" }
+        }
+      }
+    },
+    "hotspots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "lineCount", "reason", "evidenceId"],
+        "properties": {
+          "path": { "type": "string" },
+          "lineCount": { "type": "integer", "minimum": 0 },
+          "reason": { "type": "string" },
+          "evidenceId": { "type": "string" }
+        }
+      }
+    },
+    "cycles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["packages", "evidenceIds"],
+        "properties": {
+          "packages": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 2
+          },
+          "evidenceIds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          }
+        }
+      }
+    },
+    "secrets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "path", "line", "valueHash"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["PASSWORD", "API_KEY", "TOKEN", "PRIVATE_KEY", "CONNECTION_STRING", "OTHER"]
+          },
+          "path": { "type": "string" },
+          "line": { "type": "integer", "minimum": 1 },
+          "valueHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "Hash do valor; nunca o valor em claro"
+          }
+        }
+      }
+    },
+    "evidences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "path", "kind", "locator"],
+        "properties": {
+          "id": { "type": "string" },
+          "path": { "type": "string" },
+          "kind": {
+            "type": "string",
+            "enum": ["FILE", "LINE_RANGE", "PATTERN", "MANIFEST"]
+          },
+          "locator": { "type": "string" },
+          "snippetHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fileCount",
+        "javaFileCount",
+        "lineCount",
+        "typeCount",
+        "testFileCount",
+        "dependencyCount"
+      ],
+      "properties": {
+        "fileCount": { "type": "integer", "minimum": 0 },
+        "javaFileCount": { "type": "integer", "minimum": 0 },
+        "lineCount": { "type": "integer", "minimum": 0 },
+        "typeCount": { "type": "integer", "minimum": 0 },
+        "testFileCount": { "type": "integer", "minimum": 0 },
+        "dependencyCount": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

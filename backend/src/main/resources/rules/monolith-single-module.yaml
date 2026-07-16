@@ -1,0 +1,10 @@
+id: monolith-single-module
+title: "Monólito denso"
+description: "Regra automática: Monólito denso"
+severity: MEDIUM
+dimension: OPERATIONAL_COMPLEXITY
+enabled: true
+condition:
+  type: metric_gt
+  metric: "typeCount"
+  threshold: 200

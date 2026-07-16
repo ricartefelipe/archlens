@@ -1,0 +1,9 @@
+id: jms-messaging
+title: "JMS em uso"
+description: "Regra automática: JMS em uso"
+severity: LOW
+dimension: OPERATIONAL_COMPLEXITY
+enabled: true
+condition:
+  type: signal_present
+  signalName: "jms"

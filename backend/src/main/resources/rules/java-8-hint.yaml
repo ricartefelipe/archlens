@@ -1,0 +1,9 @@
+id: java-8-hint
+title: "Indício de Java 8"
+description: "Regra automática: Indício de Java 8"
+severity: MEDIUM
+dimension: MODERNIZATION_READINESS
+enabled: true
+condition:
+  type: signal_present
+  signalName: "java8"

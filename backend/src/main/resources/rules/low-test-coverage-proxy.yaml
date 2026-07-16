@@ -1,0 +1,12 @@
+id: low-test-coverage-proxy
+title: "Poucos testes relativos ao código"
+description: "Regra automática: Poucos testes relativos ao código"
+severity: HIGH
+dimension: TECHNICAL_DEBT
+enabled: true
+condition:
+  type: metric_gt
+  metric: "javaFileCount"
+  threshold: 100
+  inverseMetric: "testFileCount"
+  inverseThreshold: 5

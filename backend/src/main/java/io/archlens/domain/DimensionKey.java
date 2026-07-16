@@ -1,0 +1,11 @@
+package io.archlens.domain;
+
+public enum DimensionKey {
+    BUSINESS_CRITICALITY,
+    TEAM_SKILL,
+    RISK_TOLERANCE,
+    TECHNICAL_DEBT,
+    MODERNIZATION_READINESS,
+    SECURITY_POSTURE,
+    OPERATIONAL_COMPLEXITY
+}

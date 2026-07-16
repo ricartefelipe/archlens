@@ -1,0 +1,217 @@
+openapi: 3.0.3
+info:
+  title: ArchLens API
+  version: 1.0.0
+  description: API do MVP ArchLens — diagnóstico e modernização de apps Java legadas.
+servers:
+  - url: http://localhost:8080/api/v1
+tags:
+  - name: assessments
+  - name: imports
+  - name: findings
+  - name: questionnaire
+  - name: dimensions
+  - name: roadmap
+  - name: reports
+  - name: audit
+paths:
+  /assessments:
+    get:
+      tags: [assessments]
+      summary: List assessments
+      operationId: listAssessments
+      responses:
+        "200":
+          description: OK
+    post:
+      tags: [assessments]
+      summary: Create assessment
+      operationId: createAssessment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssessmentCreate"
+      responses:
+        "201":
+          description: Created
+  /assessments/{id}:
+    get:
+      tags: [assessments]
+      summary: Get assessment
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+  /assessments/{id}/imports:
+    post:
+      tags: [imports]
+      summary: Import analysis.json
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: ArchLens analysis document (see analysis.schema.json)
+      responses:
+        "201":
+          description: Imported
+        "200":
+          description: Idempotent replay
+        "400":
+          description: Invalid schema
+  /assessments/{id}/findings:
+    get:
+      tags: [findings]
+      summary: List findings
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+  /assessments/{id}/findings/{findingId}:
+    patch:
+      tags: [findings]
+      summary: Update finding status
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: findingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: "#/components/schemas/FindingStatus"
+                note:
+                  type: string
+      responses:
+        "200":
+          description: OK
+  /assessments/{id}/questionnaire:
+    get:
+      tags: [questionnaire]
+      summary: Get questionnaire definition and answers
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+    put:
+      tags: [questionnaire]
+      summary: Submit answers
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+  /assessments/{id}/dimensions:
+    get:
+      tags: [dimensions]
+      summary: Dimension scores with explanations
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+  /assessments/{id}/roadmap:
+    get:
+      tags: [roadmap]
+      summary: Get roadmap
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+    put:
+      tags: [roadmap]
+      summary: Replace roadmap items
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+  /assessments/{id}/report:
+    post:
+      tags: [reports]
+      summary: Generate or publish report snapshot
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+  /assessments/{id}/report/html:
+    get:
+      tags: [reports]
+      summary: Download HTML snapshot
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: HTML
+  /assessments/{id}/report/pdf:
+    get:
+      tags: [reports]
+      summary: Download PDF snapshot
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: PDF
+  /assessments/{id}/audit:
+    get:
+      tags: [audit]
+      summary: Audit events
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+  /assessments/{id}/findings.csv:
+    get:
+      tags: [findings]
+      summary: Export findings CSV
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: CSV
+components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    FindingStatus:
+      type: string
+      enum: [OPEN, APPROVED, EDITED, RISK_ACCEPTED, DISMISSED]
+    AssessmentCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string

@@ -1,0 +1,29 @@
+package io.archlens.infrastructure.persistence;
+
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
+import jakarta.persistence.*;
+import java.util.List;
+import java.util.UUID;
+
+@Entity
+@Table(name = "inventory_package")
+public class InventoryPackageEntity extends PanacheEntityBase {
+    @Id
+    @Column(columnDefinition = "uuid")
+    public UUID id;
+    @Column(name = "assessment_id", columnDefinition = "uuid")
+    public UUID assessmentId;
+    public String name;
+@Column(name = "file_count")
+public int fileCount;
+@Column(name = "line_count")
+public int lineCount;
+
+    public static List<InventoryPackageEntity> listByAssessment(UUID assessmentId) {
+        return list("assessmentId = ?1", assessmentId);
+    }
+
+    public static long deleteByAssessment(UUID assessmentId) {
+        return delete("assessmentId = ?1", assessmentId);
+    }
+}

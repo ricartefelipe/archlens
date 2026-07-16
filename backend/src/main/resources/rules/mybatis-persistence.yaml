@@ -1,0 +1,9 @@
+id: mybatis-persistence
+title: "MyBatis detectado"
+description: "Regra automática: MyBatis detectado"
+severity: LOW
+dimension: MODERNIZATION_READINESS
+enabled: true
+condition:
+  type: signal_present
+  signalName: "mybatis"

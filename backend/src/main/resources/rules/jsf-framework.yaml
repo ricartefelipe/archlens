@@ -1,0 +1,9 @@
+id: jsf-framework
+title: "JSF detectado no projeto"
+description: "Regra automática: JSF detectado no projeto"
+severity: HIGH
+dimension: MODERNIZATION_READINESS
+enabled: true
+condition:
+  type: framework_present
+  framework: "JSF"

@@ -1,0 +1,9 @@
+id: servlet-api
+title: "Servlets diretos"
+description: "Regra automática: Servlets diretos"
+severity: MEDIUM
+dimension: MODERNIZATION_READINESS
+enabled: true
+condition:
+  type: framework_present
+  framework: "SERVLET"

@@ -1,0 +1,3 @@
+# Conveniência na raiz — delega para infra/
+include:
+  - path: infra/docker-compose.yml

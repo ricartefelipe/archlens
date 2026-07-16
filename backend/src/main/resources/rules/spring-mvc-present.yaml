@@ -1,0 +1,9 @@
+id: spring-mvc-present
+title: "Spring MVC em uso"
+description: "Regra automática: Spring MVC em uso"
+severity: MEDIUM
+dimension: MODERNIZATION_READINESS
+enabled: true
+condition:
+  type: framework_present
+  framework: "SPRING_MVC"

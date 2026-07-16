@@ -1,0 +1,9 @@
+id: jax-rs-present
+title: "JAX-RS detectado"
+description: "Regra automática: JAX-RS detectado"
+severity: LOW
+dimension: MODERNIZATION_READINESS
+enabled: true
+condition:
+  type: framework_present
+  framework: "JAX_RS"

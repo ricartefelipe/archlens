@@ -1,0 +1,9 @@
+id: legacy-ejb-detected
+title: "EJB legado detectado"
+description: "Regra automática: EJB legado detectado"
+severity: CRITICAL
+dimension: TECHNICAL_DEBT
+enabled: true
+condition:
+  type: signal_present
+  signalName: "ejb"

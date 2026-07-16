@@ -1,0 +1,38 @@
+version: "1.0.0"
+title: Questionário de Modernização ArchLens
+questions:
+  - id: business_criticality
+    text: Qual a criticidade do negócio desta aplicação?
+    type: scale
+    min: 1
+    max: 5
+    dimension: BUSINESS_CRITICALITY
+    weight: 1.0
+  - id: team_skill
+    text: Qual o nível de skill da equipe em stacks modernas?
+    type: scale
+    min: 1
+    max: 5
+    dimension: TEAM_SKILL
+    weight: 1.0
+  - id: risk_tolerance
+    text: Qual a tolerância a risco para mudanças arquiteturais?
+    type: scale
+    min: 1
+    max: 5
+    dimension: RISK_TOLERANCE
+    weight: 1.0
+  - id: change_urgency
+    text: Qual a urgência de modernização?
+    type: scale
+    min: 1
+    max: 5
+    dimension: MODERNIZATION_READINESS
+    weight: 0.8
+  - id: security_priority
+    text: Prioridade de segurança percebida?
+    type: scale
+    min: 1
+    max: 5
+    dimension: SECURITY_POSTURE
+    weight: 0.9
