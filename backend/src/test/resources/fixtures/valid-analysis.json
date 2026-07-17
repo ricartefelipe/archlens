@@ -233,7 +233,9 @@
       "type": "PASSWORD",
       "path": "src/main/java/com/demo/config/LegacyConfig.java",
       "line": 12,
-      "valueHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      "valueHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "detector": "regex.secret-detector",
+      "confidence": "HIGH"
     }
   ],
   "evidences": [
@@ -308,5 +310,6 @@
     "typeCount": 8,
     "testFileCount": 0,
     "dependencyCount": 16
-  }
+  },
+  "durationMs": 42
 }

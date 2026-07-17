@@ -5,16 +5,28 @@
   "contentHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "project": {
     "rootName": "legacy-demo",
-    "buildSystems": ["MAVEN"],
-    "languages": ["Java"],
+    "buildSystems": [
+      "MAVEN"
+    ],
+    "languages": [
+      "Java"
+    ],
     "javaVersionHint": "1.8"
   },
   "inventory": {
     "modules": [
-      {"name": "legacy-demo", "path": ".", "buildSystem": "MAVEN"}
+      {
+        "name": "legacy-demo",
+        "path": ".",
+        "buildSystem": "MAVEN"
+      }
     ],
     "packages": [
-      {"name": "com.example.legacy", "fileCount": 12, "lineCount": 2400}
+      {
+        "name": "com.example.legacy",
+        "fileCount": 12,
+        "lineCount": 2400
+      }
     ],
     "types": [
       {
@@ -23,7 +35,9 @@
         "packageName": "com.example.legacy",
         "path": "src/main/java/com/example/legacy/LegacyServlet.java",
         "lineCount": 450,
-        "annotations": ["WebServlet"]
+        "annotations": [
+          "WebServlet"
+        ]
       }
     ],
     "endpoints": [
@@ -63,42 +77,54 @@
       "category": "EE",
       "name": "ejb-stateless-bean",
       "confidence": "HIGH",
-      "evidenceIds": ["ev-sig-1"]
+      "evidenceIds": [
+        "ev-sig-1"
+      ]
     },
     {
       "id": "sig-struts",
       "category": "FRAMEWORK",
       "name": "struts-action",
       "confidence": "MEDIUM",
-      "evidenceIds": ["ev-sig-2"]
+      "evidenceIds": [
+        "ev-sig-2"
+      ]
     },
     {
       "id": "sig-java8",
       "category": "BUILD",
       "name": "java8-compiler-target",
       "confidence": "HIGH",
-      "evidenceIds": ["ev-sig-3"]
+      "evidenceIds": [
+        "ev-sig-3"
+      ]
     },
     {
       "id": "sig-jdbc",
       "category": "PERSISTENCE",
       "name": "jdbc-direct",
       "confidence": "HIGH",
-      "evidenceIds": ["ev-pers-1"]
+      "evidenceIds": [
+        "ev-pers-1"
+      ]
     },
     {
       "id": "sig-jms",
       "category": "MESSAGING",
       "name": "jms-listener",
       "confidence": "MEDIUM",
-      "evidenceIds": ["ev-msg-1"]
+      "evidenceIds": [
+        "ev-msg-1"
+      ]
     },
     {
       "id": "sig-soap",
       "category": "API",
       "name": "soap-endpoint",
       "confidence": "HIGH",
-      "evidenceIds": ["ev-sig-4"]
+      "evidenceIds": [
+        "ev-sig-4"
+      ]
     }
   ],
   "dependencies": [
@@ -139,8 +165,13 @@
   ],
   "cycles": [
     {
-      "packages": ["com.example.a", "com.example.b"],
-      "evidenceIds": ["ev-cycle-1"]
+      "packages": [
+        "com.example.a",
+        "com.example.b"
+      ],
+      "evidenceIds": [
+        "ev-cycle-1"
+      ]
     }
   ],
   "secrets": [
@@ -148,18 +179,32 @@
       "type": "PASSWORD",
       "path": "src/main/resources/application.properties",
       "line": 12,
-      "valueHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      "valueHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "detector": "regex.secret-detector",
+      "confidence": "HIGH"
     },
     {
       "type": "API_KEY",
       "path": "src/main/java/com/example/legacy/Config.java",
       "line": 8,
-      "valueHash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      "valueHash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "detector": "regex.secret-detector",
+      "confidence": "HIGH"
     }
   ],
   "evidences": [
-    {"id": "ev-sig-1", "path": "src/main/java/com/example/legacy/OrderBean.java", "kind": "PATTERN", "locator": "@Stateless"},
-    {"id": "ev-endpoint-1", "path": "src/main/java/com/example/legacy/LegacyServlet.java", "kind": "PATTERN", "locator": "@WebServlet"}
+    {
+      "id": "ev-sig-1",
+      "path": "src/main/java/com/example/legacy/OrderBean.java",
+      "kind": "PATTERN",
+      "locator": "@Stateless"
+    },
+    {
+      "id": "ev-endpoint-1",
+      "path": "src/main/java/com/example/legacy/LegacyServlet.java",
+      "kind": "PATTERN",
+      "locator": "@WebServlet"
+    }
   ],
   "metrics": {
     "fileCount": 120,
@@ -168,5 +213,6 @@
     "typeCount": 250,
     "testFileCount": 3,
     "dependencyCount": 95
-  }
+  },
+  "durationMs": 42
 }

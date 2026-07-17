@@ -25,8 +25,10 @@ import io.archlens.analyzer.core.model.Secret;
 import io.archlens.analyzer.core.model.Signal;
 import io.archlens.analyzer.core.model.TypeInfo;
 import io.archlens.analyzer.core.walk.SafeFileWalker;
+import io.archlens.analyzer.core.walk.WalkLimits;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -34,7 +36,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -48,49 +49,70 @@ public final class ProjectAnalyzer {
     public static final String SCHEMA_VERSION = "1.0.0";
     public static final String ANALYZER_VERSION = "0.1.0-SNAPSHOT";
     private static final int HOTSPOT_LINE_THRESHOLD = 80;
+    private static final int MAX_TEXT_CHARS = 1_000_000;
 
     private ProjectAnalyzer() {
     }
 
     public static AnalysisDocument analyze(Path projectRoot) throws IOException {
+        long started = System.nanoTime();
         Path root = projectRoot.toAbsolutePath().normalize();
         if (!Files.isDirectory(root)) {
             throw new IOException("Project path is not a directory: " + root);
         }
 
-        List<Path> allFiles = SafeFileWalker.walkFiles(root, path -> true);
-        List<Path> javaFiles = SafeFileWalker.walkFiles(root, path -> path.toString().endsWith(".java"));
+        SafeFileWalker.WalkResult walk = SafeFileWalker.walk(root, path -> true, WalkLimits.DEFAULT);
+        List<Path> allFiles = walk.files();
+        List<Path> javaFiles = allFiles.stream()
+                .filter(path -> path.getFileName().toString().endsWith(".java"))
+                .toList();
 
         Map<String, Evidence> evidenceById = new TreeMap<>();
         List<Dependency> dependencies = new ArrayList<>();
         Set<String> buildSystems = new TreeSet<>();
         String javaVersionHint = null;
-        List<ModuleInfo> modules = new ArrayList<>();
+        Map<String, ModuleInfo> modulesByPath = new TreeMap<>();
+        List<SignalDetector.DetectedSignal> detectedSignals = new ArrayList<>();
 
         for (Path file : allFiles) {
-            String relative = relativize(root, file);
+            String relative = SafeFileWalker.toRelative(root, file);
             String name = file.getFileName().toString();
+            detectedSignals.addAll(SignalDetector.detectFromPath(relative));
 
             if ("pom.xml".equals(name)) {
                 buildSystems.add("MAVEN");
-                String content = Files.readString(file);
-                dependencies.addAll(MavenPomParser.parseDependencies(content, relative));
-                javaVersionHint = firstNonNull(javaVersionHint, MavenPomParser.javaVersionHint(content));
-                modules.add(new ModuleInfo(moduleName(relative), modulePath(relative), "MAVEN"));
+                String content = readText(file);
+                MavenPomParser.PomParseResult pom = MavenPomParser.parse(content, relative);
+                dependencies.addAll(pom.dependencies());
+                javaVersionHint = firstNonNull(javaVersionHint, pom.javaVersionHint().orElse(null));
+                modulesByPath.putIfAbsent(modulePath(relative), new ModuleInfo(moduleName(relative), modulePath(relative), "MAVEN"));
+                for (String module : pom.modules()) {
+                    String moduleRel = modulePath(relative).equals(".") ? module : modulePath(relative) + "/" + module;
+                    modulesByPath.putIfAbsent(moduleRel, new ModuleInfo(module, moduleRel, "MAVEN"));
+                }
                 addManifestEvidence(evidenceById, relative, "pom.xml");
-            } else if ("build.gradle".equals(name) || "build.gradle.kts".equals(name)) {
+            } else if (isGradleBuild(name)) {
                 buildSystems.add("GRADLE");
-                String content = Files.readString(file);
-                dependencies.addAll(GradleBuildParser.parseDependencies(content, relative));
-                javaVersionHint = firstNonNull(javaVersionHint, GradleBuildParser.javaVersionHint(content));
-                modules.add(new ModuleInfo(moduleName(relative), modulePath(relative), "GRADLE"));
+                String content = readText(file);
+                GradleBuildParser.GradleParseResult gradle = GradleBuildParser.parse(content, relative);
+                dependencies.addAll(gradle.dependencies());
+                javaVersionHint = firstNonNull(javaVersionHint, gradle.javaVersionHint().orElse(null));
+                if (!name.startsWith("settings.")) {
+                    modulesByPath.putIfAbsent(modulePath(relative), new ModuleInfo(moduleName(relative), modulePath(relative), "GRADLE"));
+                }
+                for (String module : gradle.modules()) {
+                    modulesByPath.putIfAbsent(module, new ModuleInfo(module, module, "GRADLE"));
+                }
                 addManifestEvidence(evidenceById, relative, name);
+            } else if (isConfigFile(name)) {
+                String content = readText(file);
+                detectedSignals.addAll(SignalDetector.detectFromConfigContent(relative, content));
             }
         }
 
         if (buildSystems.isEmpty()) {
             buildSystems.add("UNKNOWN");
-            modules.add(new ModuleInfo(root.getFileName().toString(), ".", "UNKNOWN"));
+            modulesByPath.putIfAbsent(".", new ModuleInfo(root.getFileName().toString(), ".", "UNKNOWN"));
         }
 
         dependencies.sort(Comparator.comparing(Dependency::coordinates).thenComparing(Dependency::sourcePath));
@@ -104,14 +126,27 @@ public final class ProjectAnalyzer {
         List<Hotspot> hotspots = new ArrayList<>();
         Map<String, Set<String>> packageImports = new HashMap<>();
         Map<String, Set<String>> packageToFiles = new HashMap<>();
-        List<SignalDetector.DetectedSignal> detectedSignals = new ArrayList<>(SignalDetector.detectFromDependencies(dependencies));
+        detectedSignals.addAll(SignalDetector.detectFromDependencies(dependencies));
 
         int totalLines = 0;
         int testFileCount = 0;
 
+        for (Path file : allFiles) {
+            String relative = SafeFileWalker.toRelative(root, file);
+            String name = file.getFileName().toString().toLowerCase(Locale.ROOT);
+            if (name.endsWith(".properties") || name.endsWith(".yml") || name.endsWith(".yaml")
+                    || name.endsWith(".xml") || name.endsWith(".env") || name.endsWith(".json")) {
+                String content = readText(file);
+                for (SecretDetector.SecretFinding finding : SecretDetector.detect(relative, content)) {
+                    secrets.add(finding.secret());
+                    evidenceById.put(finding.evidence().id(), finding.evidence());
+                }
+            }
+        }
+
         for (Path javaFile : javaFiles) {
-            String relative = relativize(root, javaFile);
-            String content = Files.readString(javaFile);
+            String relative = SafeFileWalker.toRelative(root, javaFile);
+            String content = readText(javaFile);
             int lines = JavaSourceParser.lineCount(content);
             totalLines += lines;
 
@@ -161,7 +196,7 @@ public final class ProjectAnalyzer {
         endpoints.sort(Comparator.comparing(EndpointInfo::sourcePath).thenComparing(EndpointInfo::pathOrName));
         persistence.sort(Comparator.comparing(PersistenceInfo::sourcePath).thenComparing(PersistenceInfo::name));
         messaging.sort(Comparator.comparing(MessagingInfo::sourcePath).thenComparing(MessagingInfo::name));
-        secrets.sort(Comparator.comparing(Secret::path).thenComparingInt(Secret::line));
+        secrets.sort(Comparator.comparing(Secret::path).thenComparingInt(Secret::line).thenComparing(Secret::type));
         hotspots.sort(Comparator.comparing(Hotspot::path));
 
         List<PackageInfo> packages = packageStats.entrySet().stream()
@@ -173,11 +208,13 @@ public final class ProjectAnalyzer {
                 .sorted(Comparator.comparing(PackageInfo::name))
                 .toList();
 
+        List<ModuleInfo> modules = new ArrayList<>(modulesByPath.values());
         modules.sort(Comparator.comparing(ModuleInfo::path));
 
         List<Signal> signals = mergeSignals(detectedSignals, evidenceById);
         addBuildSignals(buildSystems, evidenceById, signals);
         addInsufficientTestsSignal(javaFiles.size(), testFileCount, evidenceById, signals);
+        signals.sort(Comparator.comparing(Signal::id));
 
         List<Cycle> cycles = detectCycles(packageImports, packageToFiles, evidenceById);
 
@@ -209,10 +246,13 @@ public final class ProjectAnalyzer {
                 messaging
         );
 
+        long durationMs = Math.max(0L, (System.nanoTime() - started) / 1_000_000L);
+
         AnalysisDocument draft = new AnalysisDocument(
                 SCHEMA_VERSION,
                 ANALYZER_VERSION,
                 Instant.now().toString(),
+                durationMs,
                 "sha256:" + "0".repeat(64),
                 project,
                 inventory,
@@ -226,6 +266,31 @@ public final class ProjectAnalyzer {
         );
 
         return AnalysisJson.withHash(draft);
+    }
+
+    private static String readText(Path file) throws IOException {
+        byte[] bytes = Files.readAllBytes(file);
+        if (bytes.length > MAX_TEXT_CHARS) {
+            return new String(bytes, 0, MAX_TEXT_CHARS, StandardCharsets.UTF_8);
+        }
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
+
+    private static boolean isGradleBuild(String name) {
+        return "build.gradle".equals(name)
+                || "build.gradle.kts".equals(name)
+                || "settings.gradle".equals(name)
+                || "settings.gradle.kts".equals(name);
+    }
+
+    private static boolean isConfigFile(String name) {
+        String lower = name.toLowerCase(Locale.ROOT);
+        return lower.endsWith(".properties")
+                || lower.endsWith(".yml")
+                || lower.endsWith(".yaml")
+                || lower.equals("web.xml")
+                || lower.equals("persistence.xml")
+                || lower.equals("beans.xml");
     }
 
     private static void addBuildSignals(Set<String> buildSystems, Map<String, Evidence> evidenceById, List<Signal> signals) {
@@ -251,7 +316,7 @@ public final class ProjectAnalyzer {
             String evidenceId = "quality:insufficient-tests";
             evidenceById.putIfAbsent(
                     evidenceId,
-                    EvidenceFactory.patternEvidence(evidenceId, ".", "test-ratio", "tests=" + testFileCount)
+                    EvidenceFactory.patternEvidence(evidenceId, ".", "test-ratio", "tests-count")
             );
             signals.add(new Signal(
                     "quality.insufficient-tests",
@@ -272,7 +337,12 @@ public final class ProjectAnalyzer {
             String evidenceId = item.evidenceKey();
             evidenceById.putIfAbsent(
                     evidenceId,
-                    EvidenceFactory.patternEvidence(evidenceId, evidencePath(evidenceId), item.name(), item.name())
+                    EvidenceFactory.patternEvidence(
+                            evidenceId,
+                            evidencePath(evidenceId),
+                            item.detector(),
+                            item.id()
+                    )
             );
             byId.computeIfAbsent(item.id(), key -> new SignalAccumulator(item))
                     .evidenceIds.add(evidenceId);
@@ -283,7 +353,6 @@ public final class ProjectAnalyzer {
             List<String> evidenceIds = acc.evidenceIds.stream().sorted().distinct().toList();
             signals.add(new Signal(acc.id, acc.category, acc.name, acc.confidence, evidenceIds));
         }
-        signals.sort(Comparator.comparing(Signal::id));
         return signals;
     }
 
@@ -340,28 +409,41 @@ public final class ProjectAnalyzer {
         if (content.contains("@Path") || imports.stream().anyMatch(i -> i.startsWith("javax.ws.rs") || i.startsWith("jakarta.ws.rs"))) {
             String path = extractJaxRsPath(content);
             String evidenceId = EvidenceFactory.evidenceId("endpoint", relative, "jaxrs");
-            evidenceById.putIfAbsent(evidenceId, EvidenceFactory.lineEvidence(evidenceId, relative, 1, "@Path"));
+            evidenceById.putIfAbsent(evidenceId, EvidenceFactory.lineEvidence(evidenceId, relative, 1, "jaxrs"));
             endpoints.add(new EndpointInfo("JAX_RS", path, relative, evidenceId));
+        }
+
+        if (imports.stream().anyMatch(i -> i.startsWith("javax.servlet") || i.startsWith("jakarta.servlet"))
+                || content.toLowerCase(Locale.ROOT).contains("extends httpservlet")) {
+            String evidenceId = EvidenceFactory.evidenceId("endpoint", relative, "servlet");
+            evidenceById.putIfAbsent(evidenceId, EvidenceFactory.lineEvidence(evidenceId, relative, 1, "servlet"));
+            endpoints.add(new EndpointInfo("SERVLET", extractSimpleName(content, "Servlet"), relative, evidenceId));
         }
 
         if (annotations.contains("Entity") || imports.stream().anyMatch(i -> i.contains("persistence"))) {
             String entityName = extractSimpleName(content, "Entity");
             String evidenceId = EvidenceFactory.evidenceId("persistence", relative, "jpa");
-            evidenceById.putIfAbsent(evidenceId, EvidenceFactory.lineEvidence(evidenceId, relative, 1, "@Entity"));
+            evidenceById.putIfAbsent(evidenceId, EvidenceFactory.lineEvidence(evidenceId, relative, 1, "jpa"));
             persistence.add(new PersistenceInfo("JPA", entityName, relative, evidenceId));
         }
 
-        if (content.contains("@WebService") || imports.stream().anyMatch(i -> i.startsWith("javax.jws"))) {
+        if (imports.stream().anyMatch(i -> i.startsWith("java.sql") || i.startsWith("javax.sql"))) {
+            String evidenceId = EvidenceFactory.evidenceId("persistence", relative, "jdbc");
+            evidenceById.putIfAbsent(evidenceId, EvidenceFactory.lineEvidence(evidenceId, relative, 1, "jdbc"));
+            persistence.add(new PersistenceInfo("JDBC", extractSimpleName(content, "Jdbc"), relative, evidenceId));
+        }
+
+        if (content.contains("@WebService") || imports.stream().anyMatch(i -> i.startsWith("javax.jws") || i.startsWith("jakarta.jws"))) {
             String serviceName = extractSimpleName(content, "WebService");
             String evidenceId = EvidenceFactory.evidenceId("endpoint", relative, "soap");
-            evidenceById.putIfAbsent(evidenceId, EvidenceFactory.lineEvidence(evidenceId, relative, 1, "@WebService"));
+            evidenceById.putIfAbsent(evidenceId, EvidenceFactory.lineEvidence(evidenceId, relative, 1, "soap"));
             endpoints.add(new EndpointInfo("SOAP", serviceName, relative, evidenceId));
         }
 
         if (imports.stream().anyMatch(i -> i.startsWith("javax.jms") || i.startsWith("jakarta.jms"))) {
             String name = extractSimpleName(content, "JMS");
             String evidenceId = EvidenceFactory.evidenceId("messaging", relative, "jms");
-            evidenceById.putIfAbsent(evidenceId, EvidenceFactory.lineEvidence(evidenceId, relative, 1, "javax.jms"));
+            evidenceById.putIfAbsent(evidenceId, EvidenceFactory.lineEvidence(evidenceId, relative, 1, "jms"));
             messaging.add(new MessagingInfo("JMS", name, relative, evidenceId));
         }
 
@@ -370,6 +452,13 @@ public final class ProjectAnalyzer {
             String evidenceId = EvidenceFactory.evidenceId("messaging", relative, "kafka");
             evidenceById.putIfAbsent(evidenceId, EvidenceFactory.lineEvidence(evidenceId, relative, 1, "kafka"));
             messaging.add(new MessagingInfo("KAFKA", name, relative, evidenceId));
+        }
+
+        if (imports.stream().anyMatch(i -> i.contains("rabbitmq") || i.contains("springframework.amqp"))) {
+            String name = extractSimpleName(content, "Rabbit");
+            String evidenceId = EvidenceFactory.evidenceId("messaging", relative, "rabbit");
+            evidenceById.putIfAbsent(evidenceId, EvidenceFactory.lineEvidence(evidenceId, relative, 1, "rabbit"));
+            messaging.add(new MessagingInfo("RABBITMQ", name, relative, evidenceId));
         }
     }
 
@@ -430,10 +519,6 @@ public final class ProjectAnalyzer {
     private static boolean isTestFile(String relativePath) {
         String normalized = relativePath.replace('\\', '/').toLowerCase(Locale.ROOT);
         return normalized.contains("/test/") || normalized.endsWith("test.java") || normalized.contains("tests/");
-    }
-
-    private static String relativize(Path root, Path file) {
-        return root.relativize(file.toAbsolutePath().normalize()).toString().replace('\\', '/');
     }
 
     private static String moduleName(String pomRelative) {

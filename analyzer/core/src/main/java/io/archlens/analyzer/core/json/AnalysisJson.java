@@ -29,9 +29,13 @@ public final class AnalysisJson {
         return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(document);
     }
 
+    /**
+     * Hash canônico do conteúdo estável: exclui {@code generatedAt}, {@code durationMs} e {@code contentHash}.
+     */
     public static String computeContentHash(AnalysisDocument document) throws JsonProcessingException {
         Map<String, Object> payload = MAPPER.convertValue(document, Map.class);
         payload.remove("generatedAt");
+        payload.remove("durationMs");
         payload.remove("contentHash");
         String canonical = MAPPER.writeValueAsString(payload);
         return HashUtil.sha256(canonical);
@@ -43,6 +47,7 @@ public final class AnalysisJson {
                 document.schemaVersion(),
                 document.analyzerVersion(),
                 document.generatedAt(),
+                document.durationMs(),
                 hash,
                 document.project(),
                 document.inventory(),

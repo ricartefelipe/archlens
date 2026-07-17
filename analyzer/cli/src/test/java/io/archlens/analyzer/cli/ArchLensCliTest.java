@@ -1,6 +1,7 @@
 package io.archlens.analyzer.cli;
 
 import io.archlens.analyzer.cli.testsupport.WorkspacePaths;
+import io.archlens.analyzer.core.cli.ExitCodes;
 import org.junit.jupiter.api.Test;
 import picocli.CommandLine;
 
@@ -24,7 +25,7 @@ class ArchLensCliTest {
     void versionCommandPrintsVersion() {
         CommandLine cmd = new CommandLine(new ArchLensCli());
         int exit = cmd.execute("version");
-        assertEquals(0, exit);
+        assertEquals(ExitCodes.SUCCESS, exit);
     }
 
     @Test
@@ -33,7 +34,7 @@ class ArchLensCliTest {
         CommandLine cmd = new CommandLine(new ArchLensCli());
 
         int scanExit = cmd.execute("scan", "--path", sampleRoot().toString(), "--out", output.toString());
-        assertEquals(0, scanExit);
+        assertEquals(ExitCodes.SUCCESS, scanExit);
         assertTrue(Files.isRegularFile(output));
 
         int validateExit = cmd.execute(
@@ -41,7 +42,7 @@ class ArchLensCliTest {
                 "--file", output.toString(),
                 "--schema", schemaPath().toString()
         );
-        assertEquals(0, validateExit);
+        assertEquals(ExitCodes.SUCCESS, validateExit);
     }
 
     @Test
@@ -55,6 +56,13 @@ class ArchLensCliTest {
                 "--file", invalid.toString(),
                 "--schema", schemaPath().toString()
         );
-        assertEquals(1, exit);
+        assertEquals(ExitCodes.VALIDATION_FAILED, exit);
+    }
+
+    @Test
+    void scanRejectsInvalidPath() {
+        CommandLine cmd = new CommandLine(new ArchLensCli());
+        int exit = cmd.execute("scan", "--path", "/no/such/archlens/path", "--out", "/tmp/x.json");
+        assertEquals(ExitCodes.INVALID_INPUT, exit);
     }
 }
