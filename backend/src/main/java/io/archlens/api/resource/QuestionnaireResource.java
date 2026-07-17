@@ -2,7 +2,6 @@ package io.archlens.api.resource;
 
 import io.archlens.api.dto.CommonDtos.*;
 import io.archlens.application.service.QuestionnaireService;
-import io.archlens.infrastructure.persistence.DimensionScoreEntity;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
@@ -39,8 +38,6 @@ public class QuestionnaireResource {
     @GET
     @Path("/dimensions")
     public List<DimensionScoreResponse> getDimensions(@PathParam("assessmentId") UUID assessmentId) {
-        return DimensionScoreEntity.listByAssessment(assessmentId).stream()
-                .map(d -> new DimensionScoreResponse(d.dimensionKey, d.score, d.rationale, d.updatedAt))
-                .toList();
+        return questionnaireService.listDimensions(assessmentId);
     }
 }

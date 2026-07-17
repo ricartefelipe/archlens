@@ -65,3 +65,33 @@
 **Decisão:** `valueHash` de segredos é `SHA-256(domínio + tipo + path + linha + valor)`, nunca hash nu do valor; evidências não guardam match bruto.
 
 **Motivo:** Evitar correlação indevida do mesmo segredo entre análises/caminhos e vazamento em JSON/logs.
+
+## ADR-012: Testes de integração em PostgreSQL real
+
+**Decisão:** A suíte Quarkus usa Testcontainers (`PostgresTestResource` + `postgres:16-alpine`) e Liquibase; H2 permanece só no profile `%dev` para bootstrap local rápido.
+
+**Motivo:** Provar UUID/JSONB/BYTEA/constraints/índices no dialeto real; H2 não é prova de compatibilidade PostgreSQL.
+
+## ADR-013: Isolamento organizacional e 404
+
+**Decisão:** Leituras/escritas por UUID exigem `organization_id` (e `assessment_id` quando aplicável). Header opcional `X-Organization-Id` seleciona o tenant; acesso cruzado responde **404** (sem revelar existência). Inventário também carrega `organization_id`.
+
+**Motivo:** Defesa em profundidade e testes negativos com duas organizações.
+
+## ADR-014: TEXT/BYTEA em vez de @Lob/OID
+
+**Decisão:** Campos longos (`raw_json`, HTML, descrições) usam `TEXT`; PDF usa `BYTEA`. Evitar `@Lob` → OID no PostgreSQL.
+
+**Motivo:** OID exige conexão fora de auto-commit e quebra leituras Panache pós-transação.
+
+## ADR-015: Idempotência de import e raw_json
+
+**Decisão:** Mesma `(org, assessment, Idempotency-Key)` + mesmo `contentHash` → replay 200; hash diferente → **409**. `raw_json` persiste apenas `analysis.json` (sem fonte), limitado por `archlens.import.max-bytes` (default 5 MiB).
+
+**Motivo:** Auditoria de import sem armazenar código-fonte; conflito explícito evita sobrescrita silenciosa.
+
+## ADR-016: Scores como apoio à decisão
+
+**Decisão:** Scores são determinísticos (base 50 ± findings ± questionário), clamp 0–100, com disclaimer em rationale/relatório. Não são precisão científica.
+
+**Motivo:** Transparência para stakeholders e alinhamento ao questionário versionado.

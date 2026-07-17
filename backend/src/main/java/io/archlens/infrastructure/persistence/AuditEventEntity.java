@@ -20,7 +20,7 @@ public class AuditEventEntity extends PanacheEntityBase {
     @Enumerated(EnumType.STRING)
     public AuditAction action;
     public String actor;
-    @Lob
+    @Column(columnDefinition = "text")
     public String details;
     @Column(name = "occurred_at")
     public Instant occurredAt;
