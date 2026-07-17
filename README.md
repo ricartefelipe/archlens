@@ -4,7 +4,7 @@ Plataforma de **diagnóstico arquitetural** e **planejamento de modernização**
 
 Valor: transformar um sistema pouco conhecido em diagnóstico rastreável e plano executável — **sem enviar código-fonte para fora**.
 
-> **Status:** MVP em evolução. O ambiente Compose padrão é **demonstração local**, não produção.
+> **Status:** MVP **demonstrável** (jornada local validada). O Compose padrão é **demonstração local**, não produção. Ver [MVP_READINESS](docs/MVP_READINESS.md).
 
 ## Início rápido (comprovado no Compose demo)
 
@@ -76,6 +76,9 @@ Depois: login → criar avaliação → importar `/tmp/analysis.json` → questi
 - [Decisões](docs/DECISIONS.md)
 - [Tasks](docs/TASKS.md)
 - [Limitações](docs/LIMITATIONS.md)
+- [MVP Readiness](docs/MVP_READINESS.md)
+- [Roteiro de demo](docs/DEMO_SCRIPT.md)
+- [Prontidão comercial](docs/COMMERCIAL_READINESS.md)
 
 ## CI
 

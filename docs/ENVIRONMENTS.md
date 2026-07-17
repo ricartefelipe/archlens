@@ -34,7 +34,8 @@ O Compose padrão usa **demo**, não produção. Overlay de exemplo: `infra/dock
 | `AUTH_LOCAL_ENABLED` | `true` | `false` |
 | `AUTH_SECRET` / `NEXTAUTH_SECRET` | local | secret forte (≥32 chars) |
 | `KEYCLOAK_*` | localhost | IdP real |
-| `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8080/api/v1` | URL pública da API |
+| `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8080/api/v1` | URL pública da API (browser) |
+| `ARCHLENS_API_INTERNAL_URL` | `http://backend:8080/api/v1` (Compose) | URL server-side no container; omitir no `npm run dev` local |
 
 ## Endpoints de observabilidade
 

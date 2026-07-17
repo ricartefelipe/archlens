@@ -3,8 +3,18 @@ import type { ApiError, ProblemDetails } from "@/types";
 const DEFAULT_TIMEOUT_MS = 30_000;
 const CORRELATION_HEADER = "X-Correlation-Id";
 
+/**
+ * Base da API.
+ * No servidor (RSC/actions), preferir URL interna do Compose (`ARCHLENS_API_INTERNAL_URL`),
+ * pois `localhost` dentro do container não alcança o backend. No browser, usar a URL pública.
+ */
 export function getApiBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
+  const publicUrl =
+    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
+  if (typeof window === "undefined") {
+    return process.env.ARCHLENS_API_INTERNAL_URL ?? publicUrl;
+  }
+  return publicUrl;
 }
 
 export function getApiTimeoutMs(): number {

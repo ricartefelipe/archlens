@@ -1,5 +1,22 @@
-import { describe, expect, it } from "vitest";
-import { parseProblemDetails } from "@/lib/api/client";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { getApiBaseUrl, parseProblemDetails } from "@/lib/api/client";
+
+describe("getApiBaseUrl", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("no servidor usa ARCHLENS_API_INTERNAL_URL quando definida", () => {
+    vi.stubEnv("ARCHLENS_API_INTERNAL_URL", "http://backend:8080/api/v1");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://localhost:8080/api/v1");
+    expect(getApiBaseUrl()).toBe("http://backend:8080/api/v1");
+  });
+
+  it("cai na URL pública quando não há URL interna", () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://localhost:8080/api/v1");
+    expect(getApiBaseUrl()).toBe("http://localhost:8080/api/v1");
+  });
+});
 
 describe("parseProblemDetails", () => {
   it("interpreta application/problem+json", () => {

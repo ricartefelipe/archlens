@@ -22,6 +22,10 @@ export function analysisFixturePath(): string {
   );
 }
 
+/**
+ * Login local de demo. Contra o frontend Compose, use PLAYWRIGHT_BASE_URL=http://localhost:3000
+ * (não 127.0.0.1) para alinhar cookies com NEXTAUTH_URL.
+ */
 export async function loginAs(
   page: Page,
   username: string,

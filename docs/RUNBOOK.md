@@ -22,7 +22,7 @@ docker compose -f infra\docker-compose.yml up --build -d
 docker compose -f infra\docker-compose.yml down
 ```
 
-**Não** use `-v` a menos que queira apagar o volume `archlens_pgdata`.
+**Não** use `-v` a menos que queira apagar o volume `pgdata` (ex.: `infra_pgdata`).
 
 Se o Docker Desktop estiver inativo no Linux/WSL:
 
@@ -108,7 +108,9 @@ docker compose -f infra/docker-compose.yml up -d --build --force-recreate
 | Backend unhealthy | `docker compose -f infra/docker-compose.yml logs backend`; Postgres ready? |
 | Startup falha em prod | Ver mensagem do `SecurityConfigValidator` (OIDC/secrets/CORS) |
 | Login falha | Realm importado? Porta 8081 livre? `AUTH_LOCAL_ENABLED=true` no demo? |
-| Import 400 | JSON fora do schema — rode `validate` |
+| Login E2E falha com `127.0.0.1` | Use `http://localhost:3000` (cookies/`NEXTAUTH_URL`) |
+| UI `fetch failed` / lista vazia no Compose | Confirme `ARCHLENS_API_INTERNAL_URL=http://backend:8080/api/v1` no serviço frontend |
+| Import 400 | JSON fora do schema — rode `validate`; API exige `Idempotency-Key` |
 | Import 409 | Troque `Idempotency-Key` ou reenvie o mesmo hash |
 | Import 429 | Rate limit — aguarde 1 minuto |
 | Liquibase lock | `UPDATE databasechangeloglock SET locked=false WHERE id=1;` (um único backend) |
@@ -118,6 +120,16 @@ docker compose -f infra/docker-compose.yml up -d --build --force-recreate
 
 ```bash
 bash scripts/ci-local.sh
+```
+
+E2E contra Compose (frontend já no ar; use **localhost**, não 127.0.0.1):
+
+```bash
+export ARCHLENS_E2E_REAL=1
+export PLAYWRIGHT_BASE_URL=http://localhost:3000
+export PLAYWRIGHT_SKIP_WEBSERVER=1
+export ARCHLENS_ANALYSIS_JSON=/tmp/analysis.json   # gerado pelo CLI
+cd frontend && npm run test:e2e
 ```
 
 ## Desligar

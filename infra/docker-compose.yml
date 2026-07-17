@@ -92,7 +92,9 @@ services:
       AUTH_URL: http://localhost:3000
       NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: archlens-local-nextauth-secret
+      # Browser (host) → localhost; server actions no container → hostname Compose
       NEXT_PUBLIC_API_BASE_URL: http://localhost:8080/api/v1
+      ARCHLENS_API_INTERNAL_URL: http://backend:8080/api/v1
       AUTH_LOCAL_ENABLED: "true"
       KEYCLOAK_ISSUER: http://localhost:8081/realms/archlens
       KEYCLOAK_CLIENT_ID: archlens-frontend
