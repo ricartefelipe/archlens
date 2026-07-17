@@ -47,3 +47,75 @@
 **Decisão:** Commits limpos; sem trailers de co-autoria de ferramentas.
 
 **Motivo:** Política do time / CI.
+
+## ADR-009: Parser Maven XML endurecido (XXE)
+
+**Decisão:** `MavenPomParser` usa DOM com DTD desabilitada, entidades externas off e sem resolução de rede.
+
+**Motivo:** POMs não confiáveis não podem ler o filesystem do operador via XXE.
+
+## ADR-010: Gradle apenas heurístico
+
+**Decisão:** `GradleBuildParser` não avalia Groovy/Kotlin nem executa Gradle; version catalogs ficam não resolvidos.
+
+**Motivo:** Segurança e previsibilidade offline; limitações documentadas em `LIMITATIONS.md`.
+
+## ADR-011: Indicador de segredo contextual
+
+**Decisão:** `valueHash` de segredos é `SHA-256(domínio + tipo + path + linha + valor)`, nunca hash nu do valor; evidências não guardam match bruto.
+
+**Motivo:** Evitar correlação indevida do mesmo segredo entre análises/caminhos e vazamento em JSON/logs.
+
+## ADR-012: Testes de integração em PostgreSQL real
+
+**Decisão:** A suíte Quarkus usa Testcontainers (`PostgresTestResource` + `postgres:16-alpine`) e Liquibase; H2 permanece só no profile `%dev` para bootstrap local rápido.
+
+**Motivo:** Provar UUID/JSONB/BYTEA/constraints/índices no dialeto real; H2 não é prova de compatibilidade PostgreSQL.
+
+## ADR-013: Isolamento organizacional e 404
+
+**Decisão:** Leituras/escritas por UUID exigem `organization_id` (e `assessment_id` quando aplicável). Header opcional `X-Organization-Id` seleciona o tenant; acesso cruzado responde **404** (sem revelar existência). Inventário também carrega `organization_id`.
+
+**Motivo:** Defesa em profundidade e testes negativos com duas organizações.
+
+## ADR-014: TEXT/BYTEA em vez de @Lob/OID
+
+**Decisão:** Campos longos (`raw_json`, HTML, descrições) usam `TEXT`; PDF usa `BYTEA`. Evitar `@Lob` → OID no PostgreSQL.
+
+**Motivo:** OID exige conexão fora de auto-commit e quebra leituras Panache pós-transação.
+
+## ADR-015: Idempotência de import e raw_json
+
+**Decisão:** Mesma `(org, assessment, Idempotency-Key)` + mesmo `contentHash` → replay 200; hash diferente → **409**. `raw_json` persiste apenas `analysis.json` (sem fonte), limitado por `archlens.import.max-bytes` (default 5 MiB).
+
+**Motivo:** Auditoria de import sem armazenar código-fonte; conflito explícito evita sobrescrita silenciosa.
+
+## ADR-016: Scores como apoio à decisão
+
+**Decisão:** Scores são determinísticos (base 50 ± findings ± questionário), clamp 0–100, com disclaimer em rationale/relatório. Não são precisão científica.
+
+**Motivo:** Transparência para stakeholders e alinhamento ao questionário versionado.
+
+## ADR-017: Perfis demo vs produção
+
+**Decisão:** Compose padrão usa `QUARKUS_PROFILE=demo` com header auth explícito. Perfil `%prod` exige OIDC, TLS verification, CORS restritivo, sem header auth, sem defaults de secret e falha no startup se inseguro (`SecurityConfigValidator`).
+
+**Motivo:** Conveniência local visível e separada de hardening real; evita “prod falso” no Compose.
+
+## ADR-018: Observabilidade mínima embutida
+
+**Decisão:** CorrelationId + MDC, métricas Micrometer/Prometheus (`archlens_*`), health live/ready com check de regras, logs JSON só em `%prod`. Tracing OTel fica opcional/planejado.
+
+**Motivo:** Operabilidade do MVP sem inventar stack Grafana/Kafka.
+
+## ADR-019: Rate limit in-memory na importação
+
+**Decisão:** Filtro JAX-RS limita POSTs de import por minuto por IP/usuário. Em produção multi-instância, documentar substituição por gateway.
+
+**Motivo:** Mitigar abuso de upload no MVP sem dependência externa.
+
+## ADR-020: Imagens e Compose com versões fixas + non-root
+
+**Decisão:** Tags pinadas (`postgres:16.6-alpine`, Keycloak `26.0.7`, Node/Temurin fixos), Dockerfiles multi-stage, usuário não-root, volumes nomeados, `down` sem `-v` nos scripts oficiais.
+
+**Motivo:** Reproducibilidade e menor superfície; preservar dados em reinícios.

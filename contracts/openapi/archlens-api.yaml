@@ -45,7 +45,7 @@ paths:
       responses:
         "200":
           description: OK
-  /assessments/{id}/imports:
+  /assessments/{id}/import:
     post:
       tags: [imports]
       summary: Import analysis.json

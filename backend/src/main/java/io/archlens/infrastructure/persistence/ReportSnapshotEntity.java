@@ -21,11 +21,10 @@ public class ReportSnapshotEntity extends PanacheEntityBase {
     public int version;
     @Column(name = "content_hash")
     public String contentHash;
-    @Lob
-    @Column(name = "html_content")
+    @Column(name = "html_content", columnDefinition = "text")
     public String htmlContent;
-    @JdbcTypeCode(SqlTypes.VARBINARY)
-    @Column(name = "pdf_content", columnDefinition = "VARBINARY(10000000)")
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(name = "pdf_content", columnDefinition = "bytea")
     public byte[] pdfContent;
     public boolean published;
     @Column(name = "published_at")
@@ -35,11 +34,17 @@ public class ReportSnapshotEntity extends PanacheEntityBase {
     @Column(name = "created_at")
     public Instant createdAt;
 
-    public static List<ReportSnapshotEntity> listByAssessment(UUID assessmentId) {
-        return list("assessmentId = ?1 order by version desc", assessmentId);
+    public static List<ReportSnapshotEntity> listByOrgAndAssessment(UUID orgId, UUID assessmentId) {
+        return list("organizationId = ?1 and assessmentId = ?2 order by version desc", orgId, assessmentId);
     }
 
-    public static ReportSnapshotEntity findPublished(UUID assessmentId) {
-        return find("assessmentId = ?1 and published = true order by version desc", assessmentId).firstResult();
+    public static ReportSnapshotEntity findByOrgAssessmentAndId(UUID orgId, UUID assessmentId, UUID id) {
+        return find("organizationId = ?1 and assessmentId = ?2 and id = ?3", orgId, assessmentId, id)
+                .firstResult();
+    }
+
+    public static ReportSnapshotEntity findPublished(UUID orgId, UUID assessmentId) {
+        return find("organizationId = ?1 and assessmentId = ?2 and published = true order by version desc",
+                orgId, assessmentId).firstResult();
     }
 }

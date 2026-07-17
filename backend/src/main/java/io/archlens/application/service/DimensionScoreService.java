@@ -10,7 +10,11 @@ import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
-import java.util.*;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @ApplicationScoped
 public class DimensionScoreService {
@@ -25,27 +29,34 @@ public class DimensionScoreService {
             DimensionKey.OPERATIONAL_COMPLEXITY, BigDecimal.valueOf(50)
     );
 
+    @ConfigProperty(name = "archlens.scores.disclaimer",
+            defaultValue = "Scores apoiam decisão; não são precisão científica.")
+    String disclaimer;
+
     @Transactional
     public void recalculateFromAnalysis(UUID assessmentId, UUID orgId, AnalysisDocument doc, List<FindingEntity> findings) {
         Map<DimensionKey, BigDecimal> scores = new EnumMap<>(BASE_SCORES);
+        StringBuilder factors = new StringBuilder("Fatores técnicos: ");
 
         for (FindingEntity f : findings) {
             if (f.dimensionKey == null) continue;
             BigDecimal penalty = severityPenalty(f.severity);
             scores.merge(f.dimensionKey, penalty, BigDecimal::add);
+            factors.append(f.ruleId).append("(").append(f.severity).append(") ");
         }
 
         if (doc.metrics() != null && doc.metrics().lineCount() > 30000) {
             scores.merge(DimensionKey.OPERATIONAL_COMPLEXITY, BigDecimal.valueOf(10), BigDecimal::add);
+            factors.append("lineCount>30000 ");
         }
 
-        persistScores(assessmentId, orgId, scores, "Calculado a partir da análise estática");
+        persistScores(assessmentId, orgId, scores, factors + "| " + disclaimer);
     }
 
     @Transactional
     public void applyQuestionnaire(UUID assessmentId, UUID orgId, Map<String, Integer> answers) {
         Map<DimensionKey, BigDecimal> scores = new EnumMap<>(BASE_SCORES);
-        List<FindingEntity> findings = FindingEntity.listByAssessment(assessmentId);
+        List<FindingEntity> findings = FindingEntity.listByOrgAndAssessment(orgId, assessmentId);
         for (FindingEntity f : findings) {
             if (f.dimensionKey == null) continue;
             scores.merge(f.dimensionKey, severityPenalty(f.severity), BigDecimal::add);
@@ -57,7 +68,8 @@ public class DimensionScoreService {
         applyAnswer(scores, DimensionKey.MODERNIZATION_READINESS, answers.get("change_urgency"), 7);
         applyAnswer(scores, DimensionKey.SECURITY_POSTURE, answers.get("security_priority"), 6);
 
-        persistScores(assessmentId, orgId, scores, "Ajustado pelo questionário");
+        String rationale = "Ajustado pelo questionário (respostas parciais permitidas). " + disclaimer;
+        persistScores(assessmentId, orgId, scores, rationale);
     }
 
     private void applyAnswer(Map<DimensionKey, BigDecimal> scores, DimensionKey key, Integer value, int factor) {
@@ -83,7 +95,7 @@ public class DimensionScoreService {
             BigDecimal clamped = raw.min(BigDecimal.valueOf(100)).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
 
             DimensionScoreEntity existing = DimensionScoreEntity
-                    .find("assessmentId = ?1 and dimensionKey = ?2", assessmentId, key)
+                    .find("organizationId = ?1 and assessmentId = ?2 and dimensionKey = ?3", orgId, assessmentId, key)
                     .firstResult();
 
             if (existing == null) {

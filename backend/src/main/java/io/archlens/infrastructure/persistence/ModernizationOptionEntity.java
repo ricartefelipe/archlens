@@ -17,7 +17,7 @@ public class ModernizationOptionEntity extends PanacheEntityBase {
     @Column(name = "assessment_id", columnDefinition = "uuid")
     public UUID assessmentId;
     public String title;
-    @Lob
+    @Column(columnDefinition = "text")
     public String description;
     public String effort;
     public String impact;
@@ -26,7 +26,12 @@ public class ModernizationOptionEntity extends PanacheEntityBase {
     @Column(name = "updated_at")
     public Instant updatedAt;
 
-    public static List<ModernizationOptionEntity> listByAssessment(UUID assessmentId) {
-        return list("assessmentId = ?1 order by createdAt", assessmentId);
+    public static List<ModernizationOptionEntity> listByOrgAndAssessment(UUID orgId, UUID assessmentId) {
+        return list("organizationId = ?1 and assessmentId = ?2 order by createdAt", orgId, assessmentId);
+    }
+
+    public static ModernizationOptionEntity findByOrgAssessmentAndId(UUID orgId, UUID assessmentId, UUID id) {
+        return find("organizationId = ?1 and assessmentId = ?2 and id = ?3", orgId, assessmentId, id)
+                .firstResult();
     }
 }

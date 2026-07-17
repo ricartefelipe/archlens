@@ -2,7 +2,6 @@ package io.archlens.api.resource;
 
 import io.archlens.api.dto.CommonDtos.ImportResponse;
 import io.archlens.application.service.AnalysisImportService;
-import io.archlens.infrastructure.persistence.FindingEntity;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -28,7 +27,11 @@ public class AnalysisImportResource {
             throw new BadRequestException("Header Idempotency-Key é obrigatório");
         }
         var result = importService.importAnalysis(assessmentId, idempotencyKey.trim(), body);
-        int count = FindingEntity.listByAssessment(assessmentId).size();
-        return Response.ok(new ImportResponse(result.id, result.contentHash, result.importedAt, count)).build();
+        return Response.ok(new ImportResponse(
+                result.entity().id,
+                result.entity().contentHash,
+                result.entity().importedAt,
+                result.findingsCount()
+        )).build();
     }
 }

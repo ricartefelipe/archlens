@@ -1,19 +1,18 @@
 package io.archlens.infrastructure.security;
 
 import io.archlens.domain.UserRole;
-import io.quarkus.arc.profile.IfBuildProfile;
-import io.quarkus.oidc.UserInfo;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.NotAuthorizedException;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.HttpHeaders;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @ApplicationScoped
 public class IdentityService {
@@ -23,15 +22,27 @@ public class IdentityService {
     @Context
     HttpHeaders headers;
 
-    @ConfigProperty(name = "quarkus.oidc.enabled", defaultValue = "true")
+    @ConfigProperty(name = "quarkus.oidc.enabled", defaultValue = "false")
     boolean oidcEnabled;
 
+    @ConfigProperty(name = "archlens.local-header-auth.enabled", defaultValue = "false")
+    boolean localHeaderAuth;
+
     public ArchLensIdentity current() {
-        if (!oidcEnabled) {
+        if (localHeaderAuth) {
             String user = Optional.ofNullable(headers.getHeaderString("X-User")).orElse("dev-user");
             String rolesHeader = Optional.ofNullable(headers.getHeaderString("X-Roles")).orElse("ADMIN");
             Set<UserRole> roles = parseRoles(rolesHeader);
+            if (roles.isEmpty()) {
+                roles.add(UserRole.VIEWER);
+            }
             return new ArchLensIdentity(user, user + "@local", roles);
+        }
+        if (!oidcEnabled) {
+            throw new NotAuthorizedException("Autenticação OIDC obrigatória");
+        }
+        if (securityIdentity == null || securityIdentity.isAnonymous()) {
+            throw new NotAuthorizedException("Token OIDC ausente ou inválido");
         }
         String subject = securityIdentity.getPrincipal().getName();
         Set<UserRole> roles = securityIdentity.getRoles().stream()
@@ -57,7 +68,11 @@ public class IdentityService {
                 .map(String::trim)
                 .map(String::toUpperCase)
                 .map(r -> {
-                    try { return UserRole.valueOf(r); } catch (Exception e) { return null; }
+                    try {
+                        return UserRole.valueOf(r);
+                    } catch (Exception e) {
+                        return null;
+                    }
                 })
                 .filter(r -> r != null)
                 .collect(Collectors.toCollection(() -> EnumSet.noneOf(UserRole.class)));

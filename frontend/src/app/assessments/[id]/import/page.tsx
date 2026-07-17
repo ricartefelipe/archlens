@@ -17,8 +17,6 @@ export default async function ImportPage({
     user: session.userName ?? undefined,
     roles: session.roles,
   };
-  const roles = session.roles;
-
   return (
     <AppShell>
       <AssessmentNav assessmentId={id} />

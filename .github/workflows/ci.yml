@@ -5,6 +5,13 @@ on:
     branches: [master, develop]
   pull_request:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   analyzer:
     runs-on: ubuntu-latest
@@ -15,17 +22,38 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
-      - name: Test analyzer
+          cache-dependency-path: analyzer/pom.xml
+      - name: Build and test analyzer
         working-directory: analyzer
         run: |
           if [ -f mvnw ]; then ./mvnw -B test; else mvn -B test; fi
-      - name: Scan sample and validate
+      - name: Scan fixture and validate schema
         working-directory: analyzer
         run: |
           if [ -f mvnw ]; then MVN=./mvnw; else MVN=mvn; fi
           $MVN -B -pl cli -am package -DskipTests
-          java -jar cli/target/archlens-cli-*.jar scan --path ../samples/legacy-java-demo --out /tmp/analysis.json
-          java -jar cli/target/archlens-cli-*.jar validate --file /tmp/analysis.json
+          java -jar cli/target/archlens-analyzer-cli-*.jar scan --path ../samples/legacy-java-demo --out /tmp/analysis.json
+          java -jar cli/target/archlens-analyzer-cli-*.jar validate --file /tmp/analysis.json
+      - name: Ensure fictional secret value is not leaked in analysis.json
+        run: |
+          if grep -F 'demo-not-a-real-secret-123' /tmp/analysis.json; then
+            echo "Segredo fictício vazou no analysis.json" >&2
+            exit 1
+          fi
+          test -s /tmp/analysis.json
+      - name: Upload analysis artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: analysis-json
+          path: /tmp/analysis.json
+          retention-days: 7
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan tracked files for high-risk secret patterns
+        run: bash scripts/scan-secrets.sh
 
   backend:
     runs-on: ubuntu-latest
@@ -36,10 +64,25 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
-      - name: Test backend
+          cache-dependency-path: backend/pom.xml
+      - name: Unit and integration tests (PostgreSQL/Testcontainers)
         working-directory: backend
+        env:
+          DOCKER_HOST: unix:///var/run/docker.sock
         run: |
           if [ -f mvnw ]; then ./mvnw -B test; else mvn -B test; fi
+      - name: Liquibase changelog packaged
+        run: |
+          test -f backend/src/main/resources/db/changelog/db.changelog-postgresql.yaml
+          (cd backend && ./mvnw -B -DskipTests package)
+          found=0
+          while IFS= read -r jar; do
+            if jar tf "$jar" | grep -q 'db/changelog/db.changelog-postgresql.yaml'; then
+              found=1
+              break
+            fi
+          done < <(find backend/target/quarkus-app -name '*.jar' -type f)
+          test "$found" -eq 1
 
   frontend:
     runs-on: ubuntu-latest
@@ -50,15 +93,78 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: Install and build
+      - name: npm ci, lint, typecheck, test, build
         working-directory: frontend
         run: |
-          npm ci || npm install
+          npm ci
+          npm run lint
+          npm run typecheck
+          npm run test
           npm run build
 
   contracts:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Schema present
-        run: test -f contracts/analysis.schema.json
+      - name: Validate contracts
+        run: bash scripts/validate-contracts.sh
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose config
+        run: |
+          docker compose -f infra/docker-compose.yml config --quiet
+          docker compose -f docker-compose.yml config --quiet
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, analyzer]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Start Postgres + backend
+        run: |
+          docker compose -f infra/docker-compose.yml up -d --build postgres backend
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8080/q/health/ready; then
+              echo "backend ready"
+              exit 0
+            fi
+            sleep 5
+          done
+          docker compose -f infra/docker-compose.yml logs backend
+          exit 1
+      - name: Install frontend and Playwright
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Run E2E against real API
+        working-directory: frontend
+        env:
+          CI: "true"
+          ARCHLENS_E2E_REAL: "1"
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8080/api/v1
+          AUTH_LOCAL_ENABLED: "true"
+          AUTH_SECRET: archlens-ci-nextauth-secret-32chars
+          NEXTAUTH_SECRET: archlens-ci-nextauth-secret-32chars
+          NEXTAUTH_URL: http://127.0.0.1:3000
+          AUTH_URL: http://127.0.0.1:3000
+        run: npm run test:e2e
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/test-results
+          retention-days: 7
+      - name: Stop stack (preserve volumes)
+        if: always()
+        run: docker compose -f infra/docker-compose.yml stop

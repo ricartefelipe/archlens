@@ -8,6 +8,7 @@
     "schemaVersion",
     "analyzerVersion",
     "generatedAt",
+    "durationMs",
     "contentHash",
     "project",
     "inventory",
@@ -16,12 +17,27 @@
     "hotspots",
     "cycles",
     "secrets",
+    "evidences",
     "metrics"
   ],
   "properties": {
-    "schemaVersion": { "type": "string", "const": "1.0.0" },
-    "analyzerVersion": { "type": "string", "minLength": 1 },
-    "generatedAt": { "type": "string", "format": "date-time" },
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "analyzerVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "durationMs": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Duração da análise em milissegundos (volátil; excluída do contentHash)"
+    },
     "contentHash": {
       "type": "string",
       "pattern": "^sha256:[a-f0-9]{64}$"
@@ -29,42 +45,78 @@
     "project": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["rootName", "buildSystems", "languages"],
+      "required": [
+        "rootName",
+        "buildSystems",
+        "languages"
+      ],
       "properties": {
-        "rootName": { "type": "string" },
+        "rootName": {
+          "type": "string"
+        },
         "buildSystems": {
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["MAVEN", "GRADLE", "UNKNOWN"]
+            "enum": [
+              "MAVEN",
+              "GRADLE",
+              "UNKNOWN"
+            ]
           },
           "uniqueItems": true
         },
         "languages": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "uniqueItems": true
         },
-        "javaVersionHint": { "type": ["string", "null"] }
+        "javaVersionHint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     },
     "inventory": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["modules", "packages", "types", "endpoints", "persistence", "messaging"],
+      "required": [
+        "modules",
+        "packages",
+        "types",
+        "endpoints",
+        "persistence",
+        "messaging"
+      ],
       "properties": {
         "modules": {
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["name", "path", "buildSystem"],
+            "required": [
+              "name",
+              "path",
+              "buildSystem"
+            ],
             "properties": {
-              "name": { "type": "string" },
-              "path": { "type": "string" },
+              "name": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
               "buildSystem": {
                 "type": "string",
-                "enum": ["MAVEN", "GRADLE", "UNKNOWN"]
+                "enum": [
+                  "MAVEN",
+                  "GRADLE",
+                  "UNKNOWN"
+                ]
               }
             }
           }
@@ -74,11 +126,23 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["name", "fileCount", "lineCount"],
+            "required": [
+              "name",
+              "fileCount",
+              "lineCount"
+            ],
             "properties": {
-              "name": { "type": "string" },
-              "fileCount": { "type": "integer", "minimum": 0 },
-              "lineCount": { "type": "integer", "minimum": 0 }
+              "name": {
+                "type": "string"
+              },
+              "fileCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "lineCount": {
+                "type": "integer",
+                "minimum": 0
+              }
             }
           }
         },
@@ -87,19 +151,43 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["fqn", "kind", "packageName", "path", "lineCount"],
+            "required": [
+              "fqn",
+              "kind",
+              "packageName",
+              "path",
+              "lineCount"
+            ],
             "properties": {
-              "fqn": { "type": "string" },
+              "fqn": {
+                "type": "string"
+              },
               "kind": {
                 "type": "string",
-                "enum": ["CLASS", "INTERFACE", "ENUM", "ANNOTATION", "RECORD", "UNKNOWN"]
+                "enum": [
+                  "CLASS",
+                  "INTERFACE",
+                  "ENUM",
+                  "ANNOTATION",
+                  "RECORD",
+                  "UNKNOWN"
+                ]
               },
-              "packageName": { "type": "string" },
-              "path": { "type": "string" },
-              "lineCount": { "type": "integer", "minimum": 0 },
+              "packageName": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "lineCount": {
+                "type": "integer",
+                "minimum": 0
+              },
               "annotations": {
                 "type": "array",
-                "items": { "type": "string" }
+                "items": {
+                  "type": "string"
+                }
               }
             }
           }
@@ -109,15 +197,32 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["type", "pathOrName", "sourcePath", "evidenceId"],
+            "required": [
+              "type",
+              "pathOrName",
+              "sourcePath",
+              "evidenceId"
+            ],
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["JAX_RS", "SERVLET", "SPRING_MVC", "SOAP", "OTHER"]
+                "enum": [
+                  "JAX_RS",
+                  "SERVLET",
+                  "SPRING_MVC",
+                  "SOAP",
+                  "OTHER"
+                ]
               },
-              "pathOrName": { "type": "string" },
-              "sourcePath": { "type": "string" },
-              "evidenceId": { "type": "string" }
+              "pathOrName": {
+                "type": "string"
+              },
+              "sourcePath": {
+                "type": "string"
+              },
+              "evidenceId": {
+                "type": "string"
+              }
             }
           }
         },
@@ -126,15 +231,31 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["technology", "name", "sourcePath", "evidenceId"],
+            "required": [
+              "technology",
+              "name",
+              "sourcePath",
+              "evidenceId"
+            ],
             "properties": {
               "technology": {
                 "type": "string",
-                "enum": ["JPA", "JDBC", "MYBATIS", "OTHER"]
+                "enum": [
+                  "JPA",
+                  "JDBC",
+                  "MYBATIS",
+                  "OTHER"
+                ]
               },
-              "name": { "type": "string" },
-              "sourcePath": { "type": "string" },
-              "evidenceId": { "type": "string" }
+              "name": {
+                "type": "string"
+              },
+              "sourcePath": {
+                "type": "string"
+              },
+              "evidenceId": {
+                "type": "string"
+              }
             }
           }
         },
@@ -143,15 +264,31 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["technology", "name", "sourcePath", "evidenceId"],
+            "required": [
+              "technology",
+              "name",
+              "sourcePath",
+              "evidenceId"
+            ],
             "properties": {
               "technology": {
                 "type": "string",
-                "enum": ["JMS", "KAFKA", "RABBITMQ", "OTHER"]
+                "enum": [
+                  "JMS",
+                  "KAFKA",
+                  "RABBITMQ",
+                  "OTHER"
+                ]
               },
-              "name": { "type": "string" },
-              "sourcePath": { "type": "string" },
-              "evidenceId": { "type": "string" }
+              "name": {
+                "type": "string"
+              },
+              "sourcePath": {
+                "type": "string"
+              },
+              "evidenceId": {
+                "type": "string"
+              }
             }
           }
         }
@@ -162,9 +299,17 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "category", "name", "confidence", "evidenceIds"],
+        "required": [
+          "id",
+          "category",
+          "name",
+          "confidence",
+          "evidenceIds"
+        ],
         "properties": {
-          "id": { "type": "string" },
+          "id": {
+            "type": "string"
+          },
           "category": {
             "type": "string",
             "enum": [
@@ -180,14 +325,22 @@
               "OTHER"
             ]
           },
-          "name": { "type": "string" },
+          "name": {
+            "type": "string"
+          },
           "confidence": {
             "type": "string",
-            "enum": ["HIGH", "MEDIUM", "LOW"]
+            "enum": [
+              "HIGH",
+              "MEDIUM",
+              "LOW"
+            ]
           },
           "evidenceIds": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "minItems": 1
           }
         }
@@ -198,11 +351,21 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["coordinates", "scope", "sourcePath"],
+        "required": [
+          "coordinates",
+          "scope",
+          "sourcePath"
+        ],
         "properties": {
-          "coordinates": { "type": "string" },
-          "scope": { "type": "string" },
-          "sourcePath": { "type": "string" }
+          "coordinates": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "sourcePath": {
+            "type": "string"
+          }
         }
       }
     },
@@ -211,12 +374,26 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["path", "lineCount", "reason", "evidenceId"],
+        "required": [
+          "path",
+          "lineCount",
+          "reason",
+          "evidenceId"
+        ],
         "properties": {
-          "path": { "type": "string" },
-          "lineCount": { "type": "integer", "minimum": 0 },
-          "reason": { "type": "string" },
-          "evidenceId": { "type": "string" }
+          "path": {
+            "type": "string"
+          },
+          "lineCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reason": {
+            "type": "string"
+          },
+          "evidenceId": {
+            "type": "string"
+          }
         }
       }
     },
@@ -225,16 +402,23 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["packages", "evidenceIds"],
+        "required": [
+          "packages",
+          "evidenceIds"
+        ],
         "properties": {
           "packages": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "minItems": 2
           },
           "evidenceIds": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "minItems": 1
           }
         }
@@ -245,18 +429,50 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["type", "path", "line", "valueHash"],
+        "required": [
+          "type",
+          "path",
+          "line",
+          "detector",
+          "confidence",
+          "valueHash"
+        ],
         "properties": {
           "type": {
             "type": "string",
-            "enum": ["PASSWORD", "API_KEY", "TOKEN", "PRIVATE_KEY", "CONNECTION_STRING", "OTHER"]
+            "enum": [
+              "PASSWORD",
+              "API_KEY",
+              "TOKEN",
+              "PRIVATE_KEY",
+              "CONNECTION_STRING",
+              "OTHER"
+            ]
           },
-          "path": { "type": "string" },
-          "line": { "type": "integer", "minimum": 1 },
+          "path": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1
+          },
           "valueHash": {
             "type": "string",
             "pattern": "^sha256:[a-f0-9]{64}$",
-            "description": "Hash do valor; nunca o valor em claro"
+            "description": "Indicador SHA-256 contextual (tipo+path+linha+valor) com domínio ArchLens; nunca o valor em claro e não é hash nu do segredo"
+          },
+          "detector": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Identificador do detector (heurística/regex); não é AST"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "HIGH",
+              "MEDIUM",
+              "LOW"
+            ]
           }
         }
       }
@@ -266,15 +482,31 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "path", "kind", "locator"],
+        "required": [
+          "id",
+          "path",
+          "kind",
+          "locator"
+        ],
         "properties": {
-          "id": { "type": "string" },
-          "path": { "type": "string" },
+          "id": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
           "kind": {
             "type": "string",
-            "enum": ["FILE", "LINE_RANGE", "PATTERN", "MANIFEST"]
+            "enum": [
+              "FILE",
+              "LINE_RANGE",
+              "PATTERN",
+              "MANIFEST"
+            ]
           },
-          "locator": { "type": "string" },
+          "locator": {
+            "type": "string"
+          },
           "snippetHash": {
             "type": "string",
             "pattern": "^sha256:[a-f0-9]{64}$"
@@ -294,12 +526,30 @@
         "dependencyCount"
       ],
       "properties": {
-        "fileCount": { "type": "integer", "minimum": 0 },
-        "javaFileCount": { "type": "integer", "minimum": 0 },
-        "lineCount": { "type": "integer", "minimum": 0 },
-        "typeCount": { "type": "integer", "minimum": 0 },
-        "testFileCount": { "type": "integer", "minimum": 0 },
-        "dependencyCount": { "type": "integer", "minimum": 0 }
+        "fileCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "javaFileCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lineCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "typeCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "testFileCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dependencyCount": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     }
   }

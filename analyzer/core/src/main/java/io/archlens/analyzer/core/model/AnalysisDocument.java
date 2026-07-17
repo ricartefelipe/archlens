@@ -6,6 +6,7 @@ public record AnalysisDocument(
         String schemaVersion,
         String analyzerVersion,
         String generatedAt,
+        Long durationMs,
         String contentHash,
         ProjectInfo project,
         Inventory inventory,

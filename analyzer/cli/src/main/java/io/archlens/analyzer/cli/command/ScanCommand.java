@@ -1,6 +1,7 @@
 package io.archlens.analyzer.cli.command;
 
 import io.archlens.analyzer.core.analysis.ProjectAnalyzer;
+import io.archlens.analyzer.core.cli.ExitCodes;
 import io.archlens.analyzer.core.json.AnalysisJson;
 import io.archlens.analyzer.core.model.AnalysisDocument;
 import picocli.CommandLine.Command;
@@ -22,9 +23,9 @@ public final class ScanCommand implements Callable<Integer> {
     @Override
     public Integer call() {
         try {
-            if (!Files.isDirectory(path)) {
-                System.err.println("Path is not a directory: " + path);
-                return 1;
+            if (path == null || !Files.isDirectory(path)) {
+                System.err.println("Entrada inválida: caminho não é um diretório");
+                return ExitCodes.INVALID_INPUT;
             }
             AnalysisDocument document = ProjectAnalyzer.analyze(path);
             Path parent = out.toAbsolutePath().getParent();
@@ -33,10 +34,10 @@ public final class ScanCommand implements Callable<Integer> {
             }
             Files.writeString(out, AnalysisJson.writePretty(document));
             System.out.println("Analysis written to " + out.toAbsolutePath().normalize());
-            return 0;
+            return ExitCodes.SUCCESS;
         } catch (Exception e) {
-            System.err.println("Scan failed: " + e.getMessage());
-            return 1;
+            System.err.println("Erro interno na análise");
+            return ExitCodes.INTERNAL_ERROR;
         }
     }
 }

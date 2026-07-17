@@ -1,0 +1,15 @@
+**/target/
+**/node_modules/
+**/.next/
+**/test-results/
+**/playwright-report/
+**/.git/
+**/.env
+**/.env.local
+**/*.log
+**/coverage/
+frontend/e2e/
+docs/
+samples/
+analyzer/
+.git/

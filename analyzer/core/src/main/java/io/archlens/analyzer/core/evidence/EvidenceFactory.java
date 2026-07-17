@@ -12,15 +12,23 @@ public final class EvidenceFactory {
         return new Evidence(id, relativePath, "FILE", relativePath, null);
     }
 
-    public static Evidence lineEvidence(String id, String relativePath, int line, String snippet) {
+    /**
+     * Evidência de linha sem armazenar trecho de código. O {@code marker} deve ser um
+     * identificador seguro (ex.: nome do detector), nunca o match bruto nem valor secreto.
+     */
+    public static Evidence lineEvidence(String id, String relativePath, int line, String marker) {
         String locator = "line:" + line;
-        String snippetHash = snippet == null ? null : HashUtil.sha256(snippet.trim());
+        String snippetHash = marker == null || marker.isBlank()
+                ? null
+                : HashUtil.sha256("archlens/evidence-marker/v1\0" + marker.trim());
         return new Evidence(id, relativePath, "LINE_RANGE", locator, snippetHash);
     }
 
-    public static Evidence patternEvidence(String id, String relativePath, String pattern, String snippet) {
+    public static Evidence patternEvidence(String id, String relativePath, String pattern, String marker) {
         String locator = "pattern:" + pattern;
-        String snippetHash = snippet == null ? null : HashUtil.sha256(snippet.trim());
+        String snippetHash = marker == null || marker.isBlank()
+                ? null
+                : HashUtil.sha256("archlens/evidence-marker/v1\0" + marker.trim());
         return new Evidence(id, relativePath, "PATTERN", locator, snippetHash);
     }
 

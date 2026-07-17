@@ -132,3 +132,83 @@ databaseChangeLog:
                 details TEXT, occurred_at TIMESTAMPTZ NOT NULL
               );
               CREATE INDEX idx_audit_org_time ON audit_event (organization_id, occurred_at);
+
+  - changeSet:
+      id: 002-org-indexes-and-inventory-org
+      author: archlens
+      dbms: postgresql
+      changes:
+        - sql:
+            splitStatements: true
+            sql: |
+              CREATE INDEX IF NOT EXISTS idx_assessment_org_created
+                ON assessment (organization_id, created_at DESC);
+              CREATE INDEX IF NOT EXISTS idx_import_org_assessment_imported
+                ON analysis_import (organization_id, assessment_id, imported_at DESC);
+              CREATE INDEX IF NOT EXISTS idx_finding_org_assessment
+                ON finding (organization_id, assessment_id);
+              CREATE INDEX IF NOT EXISTS idx_finding_org_assessment_id
+                ON finding (organization_id, assessment_id, id);
+              CREATE INDEX IF NOT EXISTS idx_questionnaire_org_assessment
+                ON questionnaire_answer (organization_id, assessment_id);
+              CREATE INDEX IF NOT EXISTS idx_dimension_org_assessment
+                ON dimension_score (organization_id, assessment_id);
+              CREATE INDEX IF NOT EXISTS idx_modernization_org_assessment
+                ON modernization_option (organization_id, assessment_id);
+              CREATE INDEX IF NOT EXISTS idx_roadmap_org_assessment_order
+                ON roadmap_item (organization_id, assessment_id, sort_order);
+              CREATE INDEX IF NOT EXISTS idx_report_org_assessment_version
+                ON report_snapshot (organization_id, assessment_id, version DESC);
+              CREATE INDEX IF NOT EXISTS idx_report_org_assessment_published
+                ON report_snapshot (organization_id, assessment_id, published);
+
+              ALTER TABLE inventory_module ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES organization(id);
+              ALTER TABLE inventory_package ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES organization(id);
+              ALTER TABLE inventory_type ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES organization(id);
+              ALTER TABLE inventory_endpoint ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES organization(id);
+              ALTER TABLE inventory_persistence ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES organization(id);
+              ALTER TABLE inventory_messaging ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES organization(id);
+              ALTER TABLE inventory_signal ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES organization(id);
+              ALTER TABLE inventory_dependency ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES organization(id);
+              ALTER TABLE inventory_hotspot ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES organization(id);
+              ALTER TABLE inventory_cycle ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES organization(id);
+              ALTER TABLE inventory_secret ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES organization(id);
+              ALTER TABLE inventory_metrics ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES organization(id);
+
+              UPDATE inventory_module m SET organization_id = a.organization_id
+                FROM assessment a WHERE m.assessment_id = a.id AND m.organization_id IS NULL;
+              UPDATE inventory_package m SET organization_id = a.organization_id
+                FROM assessment a WHERE m.assessment_id = a.id AND m.organization_id IS NULL;
+              UPDATE inventory_type m SET organization_id = a.organization_id
+                FROM assessment a WHERE m.assessment_id = a.id AND m.organization_id IS NULL;
+              UPDATE inventory_endpoint m SET organization_id = a.organization_id
+                FROM assessment a WHERE m.assessment_id = a.id AND m.organization_id IS NULL;
+              UPDATE inventory_persistence m SET organization_id = a.organization_id
+                FROM assessment a WHERE m.assessment_id = a.id AND m.organization_id IS NULL;
+              UPDATE inventory_messaging m SET organization_id = a.organization_id
+                FROM assessment a WHERE m.assessment_id = a.id AND m.organization_id IS NULL;
+              UPDATE inventory_signal m SET organization_id = a.organization_id
+                FROM assessment a WHERE m.assessment_id = a.id AND m.organization_id IS NULL;
+              UPDATE inventory_dependency m SET organization_id = a.organization_id
+                FROM assessment a WHERE m.assessment_id = a.id AND m.organization_id IS NULL;
+              UPDATE inventory_hotspot m SET organization_id = a.organization_id
+                FROM assessment a WHERE m.assessment_id = a.id AND m.organization_id IS NULL;
+              UPDATE inventory_cycle m SET organization_id = a.organization_id
+                FROM assessment a WHERE m.assessment_id = a.id AND m.organization_id IS NULL;
+              UPDATE inventory_secret m SET organization_id = a.organization_id
+                FROM assessment a WHERE m.assessment_id = a.id AND m.organization_id IS NULL;
+              UPDATE inventory_metrics m SET organization_id = a.organization_id
+                FROM assessment a WHERE m.assessment_id = a.id AND m.organization_id IS NULL;
+
+              CREATE INDEX IF NOT EXISTS idx_inv_module_org_assessment ON inventory_module (organization_id, assessment_id);
+              CREATE INDEX IF NOT EXISTS idx_inv_package_org_assessment ON inventory_package (organization_id, assessment_id);
+              CREATE INDEX IF NOT EXISTS idx_inv_type_org_assessment ON inventory_type (organization_id, assessment_id);
+              CREATE INDEX IF NOT EXISTS idx_inv_endpoint_org_assessment ON inventory_endpoint (organization_id, assessment_id);
+              CREATE INDEX IF NOT EXISTS idx_inv_persistence_org_assessment ON inventory_persistence (organization_id, assessment_id);
+              CREATE INDEX IF NOT EXISTS idx_inv_messaging_org_assessment ON inventory_messaging (organization_id, assessment_id);
+              CREATE INDEX IF NOT EXISTS idx_inv_signal_org_assessment ON inventory_signal (organization_id, assessment_id);
+              CREATE INDEX IF NOT EXISTS idx_inv_dependency_org_assessment ON inventory_dependency (organization_id, assessment_id);
+              CREATE INDEX IF NOT EXISTS idx_inv_hotspot_org_assessment ON inventory_hotspot (organization_id, assessment_id);
+              CREATE INDEX IF NOT EXISTS idx_inv_cycle_org_assessment ON inventory_cycle (organization_id, assessment_id);
+              CREATE INDEX IF NOT EXISTS idx_inv_secret_org_assessment ON inventory_secret (organization_id, assessment_id);
+              CREATE INDEX IF NOT EXISTS idx_inv_metrics_org_assessment ON inventory_metrics (organization_id, assessment_id);

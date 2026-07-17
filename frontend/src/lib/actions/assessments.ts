@@ -9,7 +9,11 @@ import {
   uploadAnalysis as apiUploadAnalysis,
   generateReport as apiGenerateReport,
   publishReport as apiPublishReport,
+  downloadReport as apiDownloadReport,
+  exportFindingsCsv as apiExportFindingsCsv,
 } from "@/lib/api/assessments";
+import { ApiClientError } from "@/lib/api/client";
+import { validateAnalysisFile } from "@/lib/upload/validateAnalysisFile";
 import type {
   CreateAssessmentRequest,
   Questionnaire,
@@ -19,25 +23,64 @@ import type {
 
 async function sessionAuth() {
   const ctx = await getSessionContext();
+  if (!ctx.accessToken && !ctx.userName) {
+    throw new ApiClientError({
+      status: 401,
+      message: "Sessão expirada ou não autenticada. Faça login novamente.",
+    });
+  }
   return {
     accessToken: ctx.accessToken,
-    user: ctx.userName ?? "architect",
+    user: ctx.userName ?? undefined,
     roles: ctx.roles,
   };
 }
 
-export async function createAssessmentAction(data: CreateAssessmentRequest) {
-  const auth = await sessionAuth();
-  return apiCreateAssessment(data, auth);
+function rethrow(err: unknown): never {
+  if (err instanceof ApiClientError) {
+    throw err;
+  }
+  if (err instanceof Error) {
+    throw err;
+  }
+  throw new Error("Erro inesperado na ação do servidor.");
 }
 
-export async function uploadAnalysisAction(assessmentId: string, formData: FormData) {
-  const file = formData.get("file");
-  if (!(file instanceof File)) {
-    throw new Error("Arquivo inválido");
+export async function createAssessmentAction(data: CreateAssessmentRequest) {
+  try {
+    const auth = await sessionAuth();
+    if (!data.name?.trim()) {
+      throw new Error("Nome da avaliação é obrigatório.");
+    }
+    return await apiCreateAssessment(data, auth);
+  } catch (err) {
+    rethrow(err);
   }
-  const auth = await sessionAuth();
-  return apiUploadAnalysis(assessmentId, file, auth);
+}
+
+export async function uploadAnalysisAction(
+  assessmentId: string,
+  formData: FormData,
+) {
+  try {
+    const file = formData.get("file");
+    if (!(file instanceof File)) {
+      throw new Error("Arquivo inválido");
+    }
+    const validation = await validateAnalysisFile(file);
+    if (!validation.ok) {
+      throw new Error(validation.message);
+    }
+    const auth = await sessionAuth();
+    return await apiUploadAnalysis(
+      assessmentId,
+      file,
+      auth,
+      validation.text,
+    );
+  } catch (err) {
+    rethrow(err);
+  }
 }
 
 export async function updateFindingStatusAction(
@@ -45,29 +88,91 @@ export async function updateFindingStatusAction(
   findingId: string,
   data: UpdateFindingStatusRequest,
 ) {
-  const auth = await sessionAuth();
-  return apiUpdateFindingStatus(assessmentId, findingId, data, auth);
+  try {
+    const auth = await sessionAuth();
+    return await apiUpdateFindingStatus(assessmentId, findingId, data, auth);
+  } catch (err) {
+    rethrow(err);
+  }
 }
 
 export async function saveQuestionnaireAction(
   assessmentId: string,
   data: Questionnaire,
 ) {
-  const auth = await sessionAuth();
-  return apiSaveQuestionnaire(assessmentId, data, auth);
+  try {
+    const auth = await sessionAuth();
+    return await apiSaveQuestionnaire(assessmentId, data, auth);
+  } catch (err) {
+    rethrow(err);
+  }
 }
 
-export async function saveRoadmapAction(assessmentId: string, items: RoadmapItem[]) {
-  const auth = await sessionAuth();
-  return apiSaveRoadmap(assessmentId, items, auth);
+export async function saveRoadmapAction(
+  assessmentId: string,
+  items: RoadmapItem[],
+) {
+  try {
+    const auth = await sessionAuth();
+    return await apiSaveRoadmap(assessmentId, items, auth);
+  } catch (err) {
+    rethrow(err);
+  }
 }
 
 export async function generateReportAction(assessmentId: string) {
-  const auth = await sessionAuth();
-  return apiGenerateReport(assessmentId, auth);
+  try {
+    const auth = await sessionAuth();
+    return await apiGenerateReport(assessmentId, auth);
+  } catch (err) {
+    rethrow(err);
+  }
 }
 
 export async function publishReportAction(assessmentId: string) {
-  const auth = await sessionAuth();
-  return apiPublishReport(assessmentId, auth);
+  try {
+    const auth = await sessionAuth();
+    return await apiPublishReport(assessmentId, auth);
+  } catch (err) {
+    rethrow(err);
+  }
+}
+
+export async function downloadReportAction(
+  assessmentId: string,
+  format: "html" | "pdf",
+): Promise<{ base64: string; contentType: string; filename: string }> {
+  try {
+    const auth = await sessionAuth();
+    const result = await apiDownloadReport(assessmentId, format, auth);
+    const buffer = Buffer.from(await result.blob.arrayBuffer());
+    if (buffer.byteLength === 0) {
+      throw new Error(`Download ${format.toUpperCase()} retornou arquivo vazio.`);
+    }
+    return {
+      base64: buffer.toString("base64"),
+      contentType: result.contentType,
+      filename:
+        result.filename ?? `report-${assessmentId}.${format}`,
+    };
+  } catch (err) {
+    rethrow(err);
+  }
+}
+
+export async function exportFindingsCsvAction(
+  assessmentId: string,
+): Promise<{ base64: string; contentType: string; filename: string }> {
+  try {
+    const auth = await sessionAuth();
+    const result = await apiExportFindingsCsv(assessmentId, auth);
+    const buffer = Buffer.from(await result.blob.arrayBuffer());
+    return {
+      base64: buffer.toString("base64"),
+      contentType: result.contentType,
+      filename: result.filename ?? `findings-${assessmentId}.csv`,
+    };
+  } catch (err) {
+    rethrow(err);
+  }
 }

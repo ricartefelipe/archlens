@@ -44,6 +44,7 @@ public class RuleLoader {
                 throw new IllegalStateException("Índice de regras não encontrado");
             }
             List<RuleDefinition> loaded = new ArrayList<>();
+            Map<String, String> seenIds = new LinkedHashMap<>();
             try (BufferedReader reader = new BufferedReader(
                     new InputStreamReader(index, StandardCharsets.UTF_8))) {
                 for (String resource : reader.lines().filter(line -> !line.isBlank()).sorted().toList()) {
@@ -51,9 +52,22 @@ public class RuleLoader {
                         if (rule == null) {
                             throw new IllegalStateException("Regra não encontrada: " + resource);
                         }
-                        loaded.add(parseStream(rule));
+                        RuleDefinition def = parseStream(rule);
+                        if (def.id() == null || def.id().isBlank()) {
+                            throw new IllegalStateException("Regra sem id: " + resource);
+                        }
+                        if (seenIds.containsKey(def.id())) {
+                            throw new IllegalStateException(
+                                    "ID de regra duplicado: " + def.id()
+                                            + " em " + resource + " e " + seenIds.get(def.id()));
+                        }
+                        seenIds.put(def.id(), resource);
+                        loaded.add(def);
                     }
                 }
+            }
+            if (loaded.isEmpty()) {
+                throw new IllegalStateException("Nenhuma regra YAML carregada");
             }
             return Collections.unmodifiableList(loaded);
         } catch (Exception e) {

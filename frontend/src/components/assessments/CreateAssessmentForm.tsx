@@ -16,14 +16,19 @@ export function CreateAssessmentForm() {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (loading) return;
+    if (!name.trim()) {
+      setError("Nome da avaliação é obrigatório.");
+      return;
+    }
     setLoading(true);
     setError(null);
 
     try {
       const assessment = await createAssessmentAction({
-        name,
-        description: description || undefined,
-        targetProjectName: targetProjectName || undefined,
+        name: name.trim(),
+        description: description.trim() || undefined,
+        targetProjectName: targetProjectName.trim() || undefined,
       });
       router.push(`/assessments/${assessment.id}`);
       router.refresh();

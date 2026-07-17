@@ -1,3 +1,4 @@
+import { authHeaders, type AuthContext } from "@/lib/api/authHeaders";
 import { apiDownload, apiFetch } from "@/lib/api/client";
 import type {
   Assessment,
@@ -11,39 +12,83 @@ import type {
   Questionnaire,
   ReportSnapshot,
   RoadmapItem,
+  RoadmapPhase,
   UpdateFindingStatusRequest,
 } from "@/types";
 
-export type AuthContext =
-  | string
-  | {
-      accessToken?: string;
-      user?: string;
-      roles?: string[];
-    }
-  | undefined;
+export type { AuthContext };
 
-function authHeaders(auth?: AuthContext): {
-  accessToken?: string;
-  headers?: Record<string, string>;
-} {
-  if (typeof auth === "string") {
-    return { accessToken: auth };
-  }
-  if (auth?.accessToken) {
-    return { accessToken: auth.accessToken };
-  }
-  const user = auth?.user ?? process.env.NEXT_PUBLIC_DEV_USER ?? "architect";
-  const roles =
-    auth?.roles?.join(",") ??
-    process.env.NEXT_PUBLIC_DEV_ROLES ??
-    "ARCHITECT,VIEWER,ADMIN";
+type AssessmentApi = {
+  id: string;
+  name: string;
+  description?: string;
+  status: Assessment["status"];
+  projectRootName?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  organizationId?: string;
+};
+
+type FindingApi = {
+  id: string;
+  ruleId: string;
+  title: string;
+  description: string;
+  severity: Finding["severity"];
+  status: Finding["status"];
+  evidenceIds?: string[];
+  dimensionKey?: string;
+  reviewNote?: string;
+  updatedAt: string;
+  reviewedBy?: string;
+};
+
+function mapAssessment(a: AssessmentApi): Assessment {
   return {
-    headers: {
-      "X-User": user,
-      "X-Roles": roles,
-    },
+    id: a.id,
+    name: a.name,
+    description: a.description,
+    status: a.status,
+    organizationId: a.organizationId,
+    targetProjectName: a.projectRootName,
+    projectRootName: a.projectRootName,
+    createdAt: a.createdAt,
+    updatedAt: a.updatedAt,
+    createdBy: a.createdBy,
   };
+}
+
+function mapFinding(f: FindingApi, assessmentId: string): Finding {
+  return {
+    id: f.id,
+    assessmentId,
+    ruleId: f.ruleId,
+    title: f.title,
+    description: f.description,
+    severity: f.severity,
+    status: f.status,
+    category: f.dimensionKey ?? "general",
+    evidence: (f.evidenceIds ?? []).join(", "),
+    recommendation: f.reviewNote,
+    updatedAt: f.updatedAt,
+    updatedBy: f.reviewedBy,
+  };
+}
+
+function normalizePhase(phase: string | number | undefined): RoadmapPhase {
+  const value = String(phase ?? "SHORT_TERM").toUpperCase();
+  if (
+    value === "SHORT_TERM" ||
+    value === "MEDIUM_TERM" ||
+    value === "LONG_TERM"
+  ) {
+    return value;
+  }
+  if (value === "1" || value === "SHORT") return "SHORT_TERM";
+  if (value === "2" || value === "MEDIUM") return "MEDIUM_TERM";
+  if (value === "3" || value === "LONG") return "LONG_TERM";
+  return "SHORT_TERM";
 }
 
 export async function getOrganizationSummary(
@@ -67,34 +112,44 @@ export async function getOrganizationSummary(
 export async function listAssessments(
   auth?: AuthContext,
 ): Promise<{ items: Assessment[]; total: number }> {
-  const items = await apiFetch<Assessment[]>("/assessments", authHeaders(auth));
-  return { items, total: items.length };
+  const items = await apiFetch<AssessmentApi[]>(
+    "/assessments",
+    authHeaders(auth),
+  );
+  const mapped = items.map(mapAssessment);
+  return { items: mapped, total: mapped.length };
 }
 
 export async function createAssessment(
   data: CreateAssessmentRequest,
   auth?: AuthContext,
 ): Promise<Assessment> {
-  return apiFetch<Assessment>("/assessments", {
+  const created = await apiFetch<AssessmentApi>("/assessments", {
     method: "POST",
     body: JSON.stringify({ name: data.name, description: data.description }),
     ...authHeaders(auth),
   });
+  return mapAssessment(created);
 }
 
 export async function getAssessment(
   id: string,
   auth?: AuthContext,
 ): Promise<Assessment> {
-  return apiFetch<Assessment>(`/assessments/${id}`, authHeaders(auth));
+  const a = await apiFetch<AssessmentApi>(
+    `/assessments/${id}`,
+    authHeaders(auth),
+  );
+  return mapAssessment(a);
 }
 
 export async function uploadAnalysis(
   id: string,
   file: File,
   auth?: AuthContext,
+  payloadText?: string,
 ): Promise<ImportJob> {
-  const text = await file.text();
+  const text = payloadText ?? (await file.text());
   const key =
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
@@ -129,10 +184,14 @@ export async function getImportStatus(
   auth?: AuthContext,
 ): Promise<ImportJob> {
   const a = await getAssessment(id, auth);
+  const done =
+    a.status !== "DRAFT" &&
+    a.status !== "IMPORT_PENDING" &&
+    a.status !== "IMPORTING";
   return {
     id: `import-${id}`,
     assessmentId: id,
-    status: a.status === "DRAFT" ? "PENDING" : "COMPLETED",
+    status: done ? "COMPLETED" : "PENDING",
   };
 }
 
@@ -140,7 +199,18 @@ export async function getInventory(
   id: string,
   auth?: AuthContext,
 ): Promise<Inventory> {
-  return apiFetch<Inventory>(`/assessments/${id}/inventory`, authHeaders(auth));
+  const raw = await apiFetch<Partial<Inventory>>(
+    `/assessments/${id}/inventory`,
+    authHeaders(auth),
+  );
+  return {
+    modules: raw.modules ?? [],
+    packages: raw.packages ?? [],
+    types: raw.types ?? [],
+    endpoints: raw.endpoints ?? [],
+    persistence: raw.persistence ?? [],
+    messaging: raw.messaging ?? [],
+  };
 }
 
 export async function listFindings(
@@ -148,40 +218,18 @@ export async function listFindings(
   params: { status?: string; severity?: string; search?: string } = {},
   auth?: AuthContext,
 ): Promise<{ items: Finding[]; total: number }> {
-  const query = new URLSearchParams();
-  if (params.status) query.set("status", params.status);
-  if (params.severity) query.set("severity", params.severity);
-  const qs = query.toString();
-  const raw = await apiFetch<
-    Array<{
-      id: string;
-      ruleId: string;
-      title: string;
-      description: string;
-      severity: Finding["severity"];
-      status: Finding["status"];
-      evidenceIds?: string[];
-      dimensionKey?: string;
-      reviewNote?: string;
-      updatedAt: string;
-      reviewedBy?: string;
-    }>
-  >(`/assessments/${id}/findings${qs ? `?${qs}` : ""}`, authHeaders(auth));
+  const raw = await apiFetch<FindingApi[]>(
+    `/assessments/${id}/findings`,
+    authHeaders(auth),
+  );
 
-  let items: Finding[] = raw.map((f) => ({
-    id: f.id,
-    assessmentId: id,
-    ruleId: f.ruleId,
-    title: f.title,
-    description: f.description,
-    severity: f.severity,
-    status: f.status,
-    category: f.dimensionKey ?? "general",
-    evidence: (f.evidenceIds ?? []).join(", "),
-    recommendation: f.reviewNote,
-    updatedAt: f.updatedAt,
-    updatedBy: f.reviewedBy,
-  }));
+  let items = raw.map((f) => mapFinding(f, id));
+  if (params.status) {
+    items = items.filter((f) => f.status === params.status);
+  }
+  if (params.severity) {
+    items = items.filter((f) => f.severity === params.severity);
+  }
   if (params.search) {
     const s = params.search.toLowerCase();
     items = items.filter(
@@ -200,46 +248,24 @@ export async function updateFindingStatus(
   data: UpdateFindingStatusRequest,
   auth?: AuthContext,
 ): Promise<Finding> {
-  const f = await apiFetch<{
-    id: string;
-    ruleId: string;
-    title: string;
-    description: string;
-    severity: Finding["severity"];
-    status: Finding["status"];
-    evidenceIds?: string[];
-    dimensionKey?: string;
-    reviewNote?: string;
-    updatedAt: string;
-    reviewedBy?: string;
-  }>(`/assessments/${assessmentId}/findings/${findingId}`, {
-    method: "PATCH",
-    body: JSON.stringify({
-      status: data.status,
-      reviewNote: data.comment,
-    }),
-    ...authHeaders(auth),
-  });
-  return {
-    id: f.id,
-    assessmentId,
-    ruleId: f.ruleId,
-    title: f.title,
-    description: f.description,
-    severity: f.severity,
-    status: f.status,
-    category: f.dimensionKey ?? "general",
-    evidence: (f.evidenceIds ?? []).join(", "),
-    recommendation: f.reviewNote,
-    updatedAt: f.updatedAt,
-    updatedBy: f.reviewedBy,
-  };
+  const f = await apiFetch<FindingApi>(
+    `/assessments/${assessmentId}/findings/${findingId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        status: data.status,
+        reviewNote: data.comment,
+      }),
+      ...authHeaders(auth),
+    },
+  );
+  return mapFinding(f, assessmentId);
 }
 
 export async function exportFindingsCsv(
   id: string,
   auth?: AuthContext,
-): Promise<Blob> {
+): Promise<{ blob: Blob; filename?: string; contentType: string }> {
   return apiDownload(`/assessments/${id}/findings/export.csv`, auth);
 }
 
@@ -271,10 +297,10 @@ export async function getQuestionnaire(
           label: question.text,
           type: "number" as const,
           required: true,
-          value: question.min ?? 1,
+          value: undefined,
           helpText: question.dimension
             ? `Dimensão: ${question.dimension} (${question.min ?? 1}-${question.max ?? 5})`
-            : undefined,
+            : `Faixa ${question.min ?? 1}-${question.max ?? 5}`,
         })),
       },
     ],
@@ -293,12 +319,26 @@ export async function saveQuestionnaire(
       if (!Number.isNaN(n)) answers[field.id] = n;
     }
   }
+  if (Object.keys(answers).length === 0) {
+    throw new Error("Informe ao menos uma resposta numérica válida.");
+  }
   await apiFetch(`/assessments/${id}/questionnaire`, {
     method: "POST",
     body: JSON.stringify({ answers }),
     ...authHeaders(auth),
   });
-  return getQuestionnaire(id, auth);
+  const refreshed = await getQuestionnaire(id, auth);
+  return {
+    ...refreshed,
+    sections: refreshed.sections.map((section) => ({
+      ...section,
+      fields: section.fields.map((field) => ({
+        ...field,
+        value: answers[field.id] ?? field.value,
+      })),
+    })),
+    completedAt: new Date().toISOString(),
+  };
 }
 
 export async function getDimensions(
@@ -322,7 +362,13 @@ export async function getDimensions(
     weight: 1,
     explanation: d.rationale,
     mermaidDiagram: `flowchart LR\n  A[${d.dimensionKey}] --> B[Score ${Number(d.score)}]`,
-    factors: [{ name: "diagnóstico", impact: Number(d.score), description: d.rationale }],
+    factors: [
+      {
+        name: "diagnóstico",
+        impact: Number(d.score),
+        description: d.rationale,
+      },
+    ],
   }));
 }
 
@@ -337,17 +383,19 @@ export async function getRoadmap(
       description: string;
       phase: string;
       sortOrder: number;
+      modernizationOptionId?: string | null;
     }>
   >(`/assessments/${id}/roadmap`, authHeaders(auth));
   return items.map((i) => ({
     id: i.id,
     title: i.title,
     description: i.description,
-    phase: i.phase,
+    phase: normalizePhase(i.phase),
     order: i.sortOrder,
     effort: "MEDIUM",
     status: "PLANNED",
     priority: "MEDIUM",
+    modernizationOptionId: i.modernizationOptionId,
   }));
 }
 
@@ -364,19 +412,49 @@ export async function saveRoadmap(
     });
   }
   for (const [idx, item] of items.entries()) {
+    if (!item.title.trim()) {
+      throw new Error("Todo item do roadmap precisa de título.");
+    }
     await apiFetch(`/assessments/${id}/roadmap`, {
       method: "POST",
       body: JSON.stringify({
         title: item.title,
         description: item.description ?? "",
-        phase: String(item.phase ?? "backlog"),
+        phase: normalizePhase(item.phase),
         sortOrder: item.order ?? idx,
-        modernizationOptionId: null,
+        modernizationOptionId: item.modernizationOptionId ?? null,
       }),
       ...authHeaders(auth),
     });
   }
   return getRoadmap(id, auth);
+}
+
+export async function listReports(
+  id: string,
+  auth?: AuthContext,
+): Promise<ReportSnapshot[]> {
+  const list = await apiFetch<
+    Array<{
+      id: string;
+      version: number;
+      contentHash: string;
+      published: boolean;
+      publishedAt?: string;
+      createdAt: string;
+    }>
+  >(`/assessments/${id}/reports`, authHeaders(auth));
+  return list.map((snap) => ({
+    id: snap.id,
+    assessmentId: id,
+    version: snap.version,
+    contentHash: snap.contentHash,
+    published: snap.published,
+    status: snap.published ? "PUBLISHED" : "DRAFT",
+    publishedAt: snap.publishedAt,
+    createdAt: snap.createdAt,
+    generatedAt: snap.createdAt,
+  }));
 }
 
 export async function generateReport(
@@ -414,10 +492,7 @@ export async function publishReport(
 ): Promise<ReportSnapshot> {
   let sid = snapshotId;
   if (!sid) {
-    const list = await apiFetch<Array<{ id: string }>>(
-      `/assessments/${id}/reports`,
-      authHeaders(auth),
-    );
+    const list = await listReports(id, auth);
     sid = list[0]?.id;
   }
   if (!sid) {
@@ -452,11 +527,8 @@ export async function downloadReport(
   id: string,
   format: "html" | "pdf",
   auth?: AuthContext,
-): Promise<Blob> {
-  const list = await apiFetch<Array<{ id: string }>>(
-    `/assessments/${id}/reports`,
-    authHeaders(auth),
-  );
+): Promise<{ blob: Blob; filename?: string; contentType: string }> {
+  const list = await listReports(id, auth);
   const sid = list[0]?.id;
   if (!sid) {
     throw new Error("Nenhum relatório gerado");

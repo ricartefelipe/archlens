@@ -1,54 +1,44 @@
 # ArchLens — Tasks (estado persistente)
 
-Atualizado em 2026-07-16.
+Atualizado em **2026-07-17** (Prompt 5/5 — validação final / MVP demonstrável).
 
-## 0. Fundação
+## Prompt 5 — executado
 
-- [x] Inspeção do repositório (vazio)
-- [x] `IMPLEMENTATION_PLAN.md` / `TASKS.md` / `DECISIONS.md`
-- [x] Estrutura monorepo + README raiz
-- [x] `contracts/analysis.schema.json`
-- [x] Sample `legacy-java-demo`
+1. [x] Auditoria de escopo (analyzer, schema, fixture, backend, frontend, Compose, CI, docs)
+2. [x] Gates do zero: contracts, secret-scan, analyzer, CLI+fixture, backend IT, frontend lint/typecheck/test/build, E2E, restart/persistência
+3. [x] Correção residual: `ARCHLENS_API_INTERNAL_URL` para server actions no Compose
+4. [x] `docs/MVP_READINESS.md`, `docs/DEMO_SCRIPT.md`, `docs/COMMERCIAL_READINESS.md`
+5. [x] Atualização LIMITATIONS / ENVIRONMENTS / TASKS
 
-## 1. Analyzer
+**Veredito:** `MVP DEMONSTRÁVEL` (jornada principal verde). **Não** pronto para produção.
 
-- [x] Core: walk seguro, ignores, detecção de stack/sinais
-- [x] CLI: `scan`, `validate`, `version`
-- [x] JSON determinístico + SHA-256
-- [x] Testes: fixture, schema, determinismo
+## 0–4. Histórico
 
-## 2. Backend
+- Prompts 1–3: analyzer, backend, frontend/E2E.
+- Prompt 4: hardening demo vs prod, CI, observabilidade, docs.
 
-- [x] Módulos domain/application/infrastructure/api/report
-- [x] Liquibase YAML + entidades Panache (não expostas)
-- [x] Import analysis + idempotency + materialização
-- [x] ≥25 regras YAML + engine (27 regras)
-- [x] Questionário versionado + dimensões
-- [x] Achados (status) + revisão + auditoria
-- [x] Opções modernização + roadmap
-- [x] Relatório HTML/PDF + snapshot imutável
-- [x] OIDC configurável + papéis via headers em local
-- [x] NarrativeGenerator (template default)
-- [x] Testes API (`ArchLensApiIT` + `RuleEngineTest`) — 10/10
+## Pendências pós-MVP (não bloqueiam demo)
 
-## 3. Frontend
+- [ ] OIDC Bearer E2E completo como caminho Compose opcional (hoje demo = headers + login local)
+- [ ] Filtros de findings no servidor
+- [ ] Retenção/UI explícita de `raw_json`
+- [ ] Overlay prod com secrets reais em ambiente de cliente (piloto)
+- [ ] Dashboards externos (Prometheus já exposto)
 
-- [x] Next.js App Router + auth (local credentials + Keycloak opcional)
-- [x] Páginas da jornada E2E
-- [x] Mermaid + fallback + CSV export
-- [x] a11y básica
-- [x] Cliente API alinhado ao backend
+## Classificação resumida
 
-## 4. Infra / CI / Docs
+Ver matriz completa em [MVP_READINESS.md](./MVP_READINESS.md).
 
-- [x] docker-compose + healthchecks + Keycloak realm
-- [x] GitHub Actions CI
-- [x] Threat model, ADRs, runbook, architecture
-- [ ] E2E Playwright completo (smoke local; Compose não validado neste host — Docker daemon indisponível)
-- [x] Quality gates principais validados via Maven/npm/CLI
+| Capacidade | Estado |
+|------------|--------|
+| Analyzer + schema + fixture | IMPLEMENTED_AND_TESTED |
+| Backend jornada + IT Postgres | IMPLEMENTED_AND_TESTED |
+| Frontend + E2E real (Compose) | IMPLEMENTED_AND_TESTED |
+| Persistência volume Compose | IMPLEMENTED_AND_TESTED |
+| Hardening perfil prod | IMPLEMENTED_AND_TESTED (fail-fast) |
+| OIDC Bearer ponta a ponta | IMPLEMENTED_NOT_FULLY_TESTED |
+| Gradle / sinais | HEURISTIC |
+| LLM | OPTIONAL_EXTERNAL_INTEGRATION |
+| Multi-tenant SaaS / K8s | PLANNED / BLOCKED para SaaS público |
 
-## Pendências conhecidas
-
-- `docker compose up --build` não executado aqui: Docker daemon inacessível (`docker.sock`).
-- Playwright E2E end-to-end contra stack completa pendente de ambiente com Docker.
-- OIDC “duro” no compose local está desligado (`ARCHLENS_OIDC_ENABLED=false`); Keycloak sobe para evolução/login UI opcional.
+**Não declarar MVP pronto para produção.**

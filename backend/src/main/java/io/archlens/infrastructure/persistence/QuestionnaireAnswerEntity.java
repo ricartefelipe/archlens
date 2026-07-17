@@ -17,15 +17,14 @@ public class QuestionnaireAnswerEntity extends PanacheEntityBase {
     public UUID assessmentId;
     @Column(name = "questionnaire_version")
     public String questionnaireVersion;
-    @Lob
-    @Column(name = "answers_json")
+    @Column(name = "answers_json", columnDefinition = "text")
     public String answersJson;
     @Column(name = "submitted_by")
     public String submittedBy;
     @Column(name = "submitted_at")
     public Instant submittedAt;
 
-    public static QuestionnaireAnswerEntity findByAssessment(UUID assessmentId) {
-        return find("assessmentId = ?1", assessmentId).firstResult();
+    public static QuestionnaireAnswerEntity findByOrgAndAssessment(UUID orgId, UUID assessmentId) {
+        return find("organizationId = ?1 and assessmentId = ?2", orgId, assessmentId).firstResult();
     }
 }

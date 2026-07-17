@@ -1,7 +1,9 @@
 package io.archlens.api.dto;
 
 import io.archlens.domain.DimensionKey;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -21,11 +23,22 @@ public final class CommonDtos {
 
     public record ImportResponse(UUID importId, String contentHash, Instant importedAt, int findingsCount) {}
 
-    public record ModernizationOptionRequest(String title, String description, String effort, String impact) {}
+    public record ModernizationOptionRequest(
+            @NotBlank String title,
+            String description,
+            @NotBlank String effort,
+            @NotBlank String impact
+    ) {}
 
     public record ModernizationOptionResponse(UUID id, String title, String description, String effort, String impact, Instant createdAt, Instant updatedAt) {}
 
-    public record RoadmapItemRequest(String title, String description, String phase, int sortOrder, UUID modernizationOptionId) {}
+    public record RoadmapItemRequest(
+            @NotBlank String title,
+            String description,
+            @NotBlank String phase,
+            int sortOrder,
+            UUID modernizationOptionId
+    ) {}
 
     public record RoadmapItemResponse(UUID id, String title, String description, String phase, int sortOrder, UUID modernizationOptionId, Instant createdAt, Instant updatedAt) {}
 

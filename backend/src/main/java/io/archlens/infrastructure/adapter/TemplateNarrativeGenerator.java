@@ -8,6 +8,7 @@ import io.quarkus.arc.DefaultBean;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.commons.text.StringSubstitutor;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -23,9 +24,23 @@ public class TemplateNarrativeGenerator implements NarrativeGenerator {
 
     @Override
     public String generateExecutiveSummary(UUID assessmentId, Map<String, Object> context) {
-        AssessmentEntity assessment = AssessmentEntity.findById(assessmentId);
-        var findings = FindingEntity.listByAssessment(assessmentId);
-        var dimensions = DimensionScoreEntity.listByAssessment(assessmentId);
+        UUID orgId = null;
+        if (context != null && context.get("organizationId") != null) {
+            orgId = UUID.fromString(String.valueOf(context.get("organizationId")));
+        }
+
+        AssessmentEntity assessment;
+        List<FindingEntity> findings;
+        List<DimensionScoreEntity> dimensions;
+        if (orgId != null) {
+            assessment = AssessmentEntity.findByOrgAndId(orgId, assessmentId);
+            findings = FindingEntity.listByOrgAndAssessment(orgId, assessmentId);
+            dimensions = DimensionScoreEntity.listByOrgAndAssessment(orgId, assessmentId);
+        } else {
+            assessment = AssessmentEntity.findById(assessmentId);
+            findings = FindingEntity.listByAssessment(assessmentId);
+            dimensions = DimensionScoreEntity.listByAssessment(assessmentId);
+        }
 
         String topDim = "N/A";
         String topScore = "0";
@@ -36,12 +51,17 @@ public class TemplateNarrativeGenerator implements NarrativeGenerator {
         }
 
         Map<String, String> values = new HashMap<>();
-        values.put("projectName", assessment != null && assessment.projectRootName != null ? assessment.projectRootName : "projeto");
+        values.put("projectName", assessment != null && assessment.projectRootName != null
+                ? assessment.projectRootName : "projeto");
         values.put("findingCount", String.valueOf(findings.size()));
         values.put("topDimension", topDim);
         values.put("topScore", topScore);
         if (context != null) {
-            context.forEach((k, v) -> values.put(k, String.valueOf(v)));
+            context.forEach((k, v) -> {
+                if (!"organizationId".equals(k)) {
+                    values.put(k, String.valueOf(v));
+                }
+            });
         }
         return StringSubstitutor.replace(TEMPLATE, values).trim();
     }

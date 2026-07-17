@@ -109,7 +109,10 @@ public class ModernizationResource {
             @PathParam("assessmentId") UUID assessmentId,
             @PathParam("snapshotId") UUID snapshotId) {
         ReportSnapshotEntity snap = reportService.getSnapshot(assessmentId, snapshotId);
-        return Response.ok(snap.htmlContent).type(MediaType.TEXT_HTML).build();
+        return Response.ok(snap.htmlContent)
+                .type(MediaType.TEXT_HTML + "; charset=UTF-8")
+                .header("Content-Disposition", "inline; filename=\"report-v" + snap.version + ".html\"")
+                .build();
     }
 
     @GET
@@ -119,7 +122,8 @@ public class ModernizationResource {
             @PathParam("assessmentId") UUID assessmentId,
             @PathParam("snapshotId") UUID snapshotId) {
         ReportSnapshotEntity snap = reportService.getSnapshot(assessmentId, snapshotId);
-        if (snap.pdfContent == null || snap.pdfContent.length == 0) {
+        if (snap.pdfContent == null || snap.pdfContent.length < 100
+                || snap.pdfContent[0] != '%' || snap.pdfContent[1] != 'P') {
             throw new NotFoundException("PDF não disponível");
         }
         return Response.ok(snap.pdfContent).type("application/pdf")

@@ -2,9 +2,9 @@ package io.archlens.application.service;
 
 import io.archlens.api.dto.FindingDtos.*;
 import io.archlens.domain.AuditAction;
-import io.archlens.domain.FindingStatus;
 import io.archlens.infrastructure.persistence.AssessmentEntity;
 import io.archlens.infrastructure.persistence.FindingEntity;
+import io.archlens.infrastructure.persistence.OrganizationEntity;
 import io.archlens.infrastructure.security.IdentityService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -26,13 +26,13 @@ public class FindingService {
     IdentityService identityService;
 
     public List<FindingResponse> list(UUID assessmentId) {
-        ensureAssessment(assessmentId);
-        return FindingEntity.listByAssessment(assessmentId).stream().map(this::toResponse).toList();
+        OrganizationEntity org = ensureAssessment(assessmentId);
+        return FindingEntity.listByOrgAndAssessment(org.id, assessmentId).stream().map(this::toResponse).toList();
     }
 
     public FindingResponse get(UUID assessmentId, UUID findingId) {
-        ensureAssessment(assessmentId);
-        FindingEntity f = FindingEntity.findByAssessmentAndId(assessmentId, findingId);
+        OrganizationEntity org = ensureAssessment(assessmentId);
+        FindingEntity f = FindingEntity.findByOrgAssessmentAndId(org.id, assessmentId, findingId);
         if (f == null) throw new NotFoundException("Achado não encontrado");
         return toResponse(f);
     }
@@ -40,11 +40,10 @@ public class FindingService {
     @Transactional
     public FindingResponse updateStatus(UUID assessmentId, UUID findingId, UpdateFindingStatusRequest req) {
         identityService.requireWrite();
-        var org = organizationService.getOrganization();
+        OrganizationEntity org = ensureAssessment(assessmentId);
         var actor = identityService.current().subject();
-        ensureAssessment(assessmentId);
 
-        FindingEntity f = FindingEntity.findByAssessmentAndId(assessmentId, findingId);
+        FindingEntity f = FindingEntity.findByOrgAssessmentAndId(org.id, assessmentId, findingId);
         if (f == null) throw new NotFoundException("Achado não encontrado");
 
         f.status = req.status();
@@ -59,11 +58,12 @@ public class FindingService {
         return toResponse(f);
     }
 
-    private void ensureAssessment(UUID assessmentId) {
-        var org = organizationService.getOrganization();
+    private OrganizationEntity ensureAssessment(UUID assessmentId) {
+        OrganizationEntity org = organizationService.getOrganization();
         if (AssessmentEntity.findByOrgAndId(org.id, assessmentId) == null) {
             throw new NotFoundException("Avaliação não encontrada");
         }
+        return org;
     }
 
     private FindingResponse toResponse(FindingEntity f) {

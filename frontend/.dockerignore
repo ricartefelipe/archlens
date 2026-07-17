@@ -1,0 +1,14 @@
+node_modules/
+.next/
+test-results/
+playwright-report/
+coverage/
+.git/
+.env
+.env.local
+.env.*.local
+*.log
+README.md
+e2e/
+vitest.config.ts
+playwright.config.ts
