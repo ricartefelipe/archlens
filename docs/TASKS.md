@@ -1,62 +1,44 @@
 # ArchLens — Tasks (estado persistente)
 
-Atualizado em 2026-07-17 (Prompt 4/5 — hardening/infra/CI/docs).
+Atualizado em **2026-07-17** (Prompt 5/5 — validação final / MVP demonstrável).
 
-## Diagnóstico Prompt 4 (baseline)
+## Prompt 5 — executado
 
-Riscos encontrados antes das alterações:
+1. [x] Auditoria de escopo (analyzer, schema, fixture, backend, frontend, Compose, CI, docs)
+2. [x] Gates do zero: contracts, secret-scan, analyzer, CLI+fixture, backend IT, frontend lint/typecheck/test/build, E2E, restart/persistência
+3. [x] Correção residual: `ARCHLENS_API_INTERNAL_URL` para server actions no Compose
+4. [x] `docs/MVP_READINESS.md`, `docs/DEMO_SCRIPT.md`, `docs/COMMERCIAL_READINESS.md`
+5. [x] Atualização LIMITATIONS / ENVIRONMENTS / TASKS
 
-| Severidade | Risco |
-|------------|--------|
-| Alta | Compose usava `QUARKUS_PROFILE=prod` com OIDC off e header auth (falso prod) |
-| Alta | TLS OIDC `none` e secrets com defaults mesmo em “prod” |
-| Alta | Keycloak `webOrigins: "+"` permissivo |
-| Média | Sem `.dockerignore`, containers root, CI incompleta |
-| Média | Sem métricas/Prometheus, rate limit, headers de segurança consistentes |
-| Média | Docs/runbook sem backup, perfis nem comandos Windows de preserve-data |
-| Baixa | Swagger potencialmente público em pacote “prod” |
+**Veredito:** `MVP DEMONSTRÁVEL` (jornada principal verde). **Não** pronto para produção.
 
-## Plano Prompt 4 — executado
+## 0–4. Histórico
 
-1. [x] Perfis `dev` / `test` / `demo` / `prod` + `SecurityConfigValidator`
-2. [x] IdentityService: header auth só com `archlens.local-header-auth.enabled`
-3. [x] Keycloak realm: clients separados, webOrigins restritos, PKCE, usuários fictícios
-4. [x] Compose demo + overlay prod exemplo; healthchecks; volumes nomeados; non-root
-5. [x] Métricas, correlation MDC, security headers, rate limit import, readiness regras
-6. [x] CI expandida (analyzer, secret scan, backend IT, liquibase pack, frontend gates, e2e, compose, contracts)
-7. [x] Docs: README, RUNBOOK, ARCHITECTURE, THREAT_MODEL, ENVIRONMENTS, OBSERVABILITY, DECISIONS, TASKS
-8. [x] Quality gate runtime (compose up/health/jornada/restart) — validado nesta sessão
+- Prompts 1–3: analyzer, backend, frontend/E2E.
+- Prompt 4: hardening demo vs prod, CI, observabilidade, docs.
 
-## 0–3. Fundação / Analyzer / Backend / Frontend
+## Pendências pós-MVP (não bloqueiam demo)
 
-- Prompts 1–3 concluídos (ver histórico).
+- [ ] OIDC Bearer E2E completo como caminho Compose opcional (hoje demo = headers + login local)
+- [ ] Filtros de findings no servidor
+- [ ] Retenção/UI explícita de `raw_json`
+- [ ] Overlay prod com secrets reais em ambiente de cliente (piloto)
+- [ ] Dashboards externos (Prometheus já exposto)
 
-## 4. Infra / CI / Docs (este prompt)
+## Classificação resumida
 
-- [x] Separação demo vs produção
-- [x] Endurecimento containers/CI/observabilidade
-- [x] Quality gate local: contracts, secret-scan, backend tests (20), compose health/ready, métricas, headers, jornada API + RBAC VIEWER 403, analyzer sem vazamento, restart preservando assessment, fail-fast `%prod`, frontend lint/typecheck/test
-- [ ] OIDC Bearer E2E completo no Compose (ainda opcional; backend demo usa headers)
-- [ ] Prompt 5 — validação final MVP (não declarar produção)
-
-**Não declarar MVP pronto para produção.**
-
-## Classificação de capacidades
+Ver matriz completa em [MVP_READINESS.md](./MVP_READINESS.md).
 
 | Capacidade | Estado |
 |------------|--------|
-| Analyzer + schema + fixture | Implementada e testada |
-| Backend jornada + IT Postgres | Implementada e testada |
-| Frontend + E2E real | Implementada e testada (Prompt 3) |
-| Hardening perfil prod | Implementada; fail-fast testado via config |
-| OIDC ponta a ponta Bearer | Implementada não totalmente testada |
-| Métricas/dashboards | Implementada (endpoint); dashboards externos planejados |
-| Gradle / sinais | Heurística |
-| LLM | Opcional |
-| Multi-tenant / K8s | Planejada (fora de escopo) |
+| Analyzer + schema + fixture | IMPLEMENTED_AND_TESTED |
+| Backend jornada + IT Postgres | IMPLEMENTED_AND_TESTED |
+| Frontend + E2E real (Compose) | IMPLEMENTED_AND_TESTED |
+| Persistência volume Compose | IMPLEMENTED_AND_TESTED |
+| Hardening perfil prod | IMPLEMENTED_AND_TESTED (fail-fast) |
+| OIDC Bearer ponta a ponta | IMPLEMENTED_NOT_FULLY_TESTED |
+| Gradle / sinais | HEURISTIC |
+| LLM | OPTIONAL_EXTERNAL_INTEGRATION |
+| Multi-tenant SaaS / K8s | PLANNED / BLOCKED para SaaS público |
 
-## Pendências para Prompt 5
-
-- Validação final end-to-end e checklist de “não pronto para produção”.
-- Decidir se demo Compose passa a oferecer perfil opcional com OIDC no backend.
-- Filtros de findings no servidor; retenção/UI de `raw_json`.
+**Não declarar MVP pronto para produção.**
