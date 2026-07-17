@@ -1,51 +1,62 @@
 # ArchLens — Tasks (estado persistente)
 
-Atualizado em 2026-07-17 (Prompt 3/5 — frontend/auth/E2E **concluído**).
+Atualizado em 2026-07-17 (Prompt 4/5 — hardening/infra/CI/docs).
 
-## Diagnóstico Prompt 3 (baseline antes das alterações)
+## Diagnóstico Prompt 4 (baseline)
 
-- Projeto ArchLens confirmado (analyzer + backend + frontend + infra).
-- Baseline frontend: `npm ci` OK; lint com 4 warnings (roles não usados); `tsc` OK; `build` OK.
-- Lacunas:
-  - Cliente API sem Problem Details / correlationId / timeout.
-  - Login local sempre ativo (senhas no módulo auth); Keycloak em porta errada no `.env.local`.
-  - Fallback silencioso `X-Roles=ADMIN` via `NEXT_PUBLIC_DEV_*`.
-  - Roadmap enviava `phase` numérica; backend exige `SHORT_TERM|MEDIUM_TERM|LONG_TERM`.
-  - Upload sem validação client-side; downloads dependiam de CORS frágil.
-  - E2E apenas smoke; testes unitários ausentes.
-  - Compose: OIDC desligado no backend (headers locais); Keycloak client público.
+Riscos encontrados antes das alterações:
 
-## Plano Prompt 3 — executado
+| Severidade | Risco |
+|------------|--------|
+| Alta | Compose usava `QUARKUS_PROFILE=prod` com OIDC off e header auth (falso prod) |
+| Alta | TLS OIDC `none` e secrets com defaults mesmo em “prod” |
+| Alta | Keycloak `webOrigins: "+"` permissivo |
+| Média | Sem `.dockerignore`, containers root, CI incompleta |
+| Média | Sem métricas/Prometheus, rate limit, headers de segurança consistentes |
+| Média | Docs/runbook sem backup, perfis nem comandos Windows de preserve-data |
+| Baixa | Swagger potencialmente público em pacote “prod” |
 
-1. [x] Cliente API: base URL, timeout, correlationId, `application/problem+json`, download com content-type/filename
-2. [x] Auth: `AUTH_LOCAL_ENABLED`; Keycloak opcional; middleware; papéis na UI; 401/403 tratados
-3. [x] Jornada UX: criação, import (validação), inventário, findings, questionário, scores, roadmap, relatório/publicação/download, auditoria
-4. [x] Segurança UI: sem log de token/JSON; upload validado; downloads via server action; Mermaid strict
-5. [x] Testes unitários (Vitest 12) + Playwright real (10)
-6. [x] Quality gate: lint / typecheck / test / build / E2E
-7. [x] CORS backend: `quarkus.http.cors.enabled=true`; client Keycloak confidential para NextAuth
+## Plano Prompt 4 — executado
 
-## 0–2. Fundação / Analyzer / Backend
+1. [x] Perfis `dev` / `test` / `demo` / `prod` + `SecurityConfigValidator`
+2. [x] IdentityService: header auth só com `archlens.local-header-auth.enabled`
+3. [x] Keycloak realm: clients separados, webOrigins restritos, PKCE, usuários fictícios
+4. [x] Compose demo + overlay prod exemplo; healthchecks; volumes nomeados; non-root
+5. [x] Métricas, correlation MDC, security headers, rate limit import, readiness regras
+6. [x] CI expandida (analyzer, secret scan, backend IT, liquibase pack, frontend gates, e2e, compose, contracts)
+7. [x] Docs: README, RUNBOOK, ARCHITECTURE, THREAT_MODEL, ENVIRONMENTS, OBSERVABILITY, DECISIONS, TASKS
+8. [x] Quality gate runtime (compose up/health/jornada/restart) — validado nesta sessão
 
-- Ver histórico Prompt 1 e 2 (concluídos).
+## 0–3. Fundação / Analyzer / Backend / Frontend
 
-## 3. Frontend (Prompt 3)
+- Prompts 1–3 concluídos (ver histórico).
 
-- [x] Rotas e componentes da jornada
-- [x] Contratos alinhados (assessment `projectRootName`, roadmap phases, Problem Details)
-- [x] A11y básica (labels, alertas, foco em controles)
-- [x] E2E Compose/Playwright com serviços reais (Postgres + backend + frontend local)
+## 4. Infra / CI / Docs (este prompt)
 
-## 4. Infra / CI / Docs
+- [x] Separação demo vs produção
+- [x] Endurecimento containers/CI/observabilidade
+- [x] Quality gate local: contracts, secret-scan, backend tests (20), compose health/ready, métricas, headers, jornada API + RBAC VIEWER 403, analyzer sem vazamento, restart preservando assessment, fail-fast `%prod`, frontend lint/typecheck/test
+- [ ] OIDC Bearer E2E completo no Compose (ainda opcional; backend demo usa headers)
+- [ ] Prompt 5 — validação final MVP (não declarar produção)
 
-- [x] docker-compose com env de auth no frontend
-- [x] E2E Playwright hospedado (stack parcial Compose + frontend `npm run dev`)
-- [ ] Endurecer OIDC end-to-end (backend `ARCHLENS_OIDC_ENABLED=true` + token real)
-- [x] Threat model / ADRs / runbook (pré-existentes)
+**Não declarar MVP pronto para produção.**
 
-## Pendências para o próximo prompt
+## Classificação de capacidades
 
-- Ligar OIDC no backend no Compose integrado e validar Bearer (não só `X-User`/`X-Roles`).
-- Filtros de findings no servidor (hoje filtragem client-side após GET completo).
-- Política de retenção de `raw_json` e UI de modernização options dedicada.
-- Dependência CORS do Quarkus: confirmar headers `Access-Control-*` após rebuild limpo (downloads críticos já vão por server action).
+| Capacidade | Estado |
+|------------|--------|
+| Analyzer + schema + fixture | Implementada e testada |
+| Backend jornada + IT Postgres | Implementada e testada |
+| Frontend + E2E real | Implementada e testada (Prompt 3) |
+| Hardening perfil prod | Implementada; fail-fast testado via config |
+| OIDC ponta a ponta Bearer | Implementada não totalmente testada |
+| Métricas/dashboards | Implementada (endpoint); dashboards externos planejados |
+| Gradle / sinais | Heurística |
+| LLM | Opcional |
+| Multi-tenant / K8s | Planejada (fora de escopo) |
+
+## Pendências para Prompt 5
+
+- Validação final end-to-end e checklist de “não pronto para produção”.
+- Decidir se demo Compose passa a oferecer perfil opcional com OIDC no backend.
+- Filtros de findings no servidor; retenção/UI de `raw_json`.

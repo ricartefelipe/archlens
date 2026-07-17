@@ -1,12 +1,14 @@
 {
   "realm": "archlens",
   "enabled": true,
+  "displayName": "ArchLens Demo",
   "sslRequired": "external",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
-  "resetPasswordAllowed": true,
+  "resetPasswordAllowed": false,
   "editUsernameAllowed": false,
+  "bruteForceProtected": true,
   "roles": {
     "realm": [
       { "name": "ADMIN", "description": "Full administration" },
@@ -21,7 +23,7 @@
       "enabled": true,
       "publicClient": false,
       "secret": "archlens-frontend-secret",
-      "directAccessGrantsEnabled": true,
+      "directAccessGrantsEnabled": false,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "redirectUris": [
@@ -30,14 +32,16 @@
       ],
       "webOrigins": [
         "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "+"
+        "http://127.0.0.1:3000"
       ],
       "attributes": {
-        "pkce.code.challenge.method": "S256"
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/*##http://127.0.0.1:3000/*"
       },
       "protocol": "openid-connect",
-      "fullScopeAllowed": true
+      "fullScopeAllowed": true,
+      "defaultClientScopes": ["web-origins", "acr", "profile", "roles", "email"],
+      "optionalClientScopes": ["address", "phone", "offline_access"]
     },
     {
       "clientId": "archlens-api",
@@ -49,7 +53,8 @@
       "directAccessGrantsEnabled": false,
       "standardFlowEnabled": false,
       "bearerOnly": true,
-      "protocol": "openid-connect"
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true
     }
   ],
   "users": [

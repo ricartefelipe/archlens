@@ -7,7 +7,7 @@
 │ Analyzer CLI│ ─────────────────────► │ Backend Quarkus  │
 │ (local)     │                        │ domain/app/infra │
 └─────────────┘                        └────────┬─────────┘
-                                                │ REST + OIDC
+                                                │ REST + auth
 ┌─────────────┐                        ┌────────▼─────────┐
 │ Sample demo │                        │ Frontend Next.js │
 └─────────────┘                        └────────┬─────────┘
@@ -16,6 +16,15 @@
                                        │ Keycloak + PG    │
                                        └──────────────────┘
 ```
+
+## Limites reais do MVP
+
+- **Monólito modular** — sem Kubernetes, Kafka ou microsserviços.
+- **Uma organização por instalação.**
+- **Analyzer offline** — sem rede; não executa build do alvo.
+- **Compose demo** usa auth por headers no backend; OIDC endurecido existe no perfil `%prod` mas Bearer E2E completo ainda não é o caminho padrão do Compose.
+- **LLM** opcional e desligado por padrão.
+- **Não declarar pronto para produção** até validação final (Prompt 5).
 
 ## Fluxo de dados
 
@@ -30,9 +39,20 @@
 
 - **domain** — entidades e políticas
 - **application** — casos de uso e portas
-- **infrastructure** — Panache, filesystem, LLM adapter
-- **api** — REST DTOs, segurança
+- **infrastructure** — Panache, filesystem, LLM adapter, métricas, health
+- **api** — REST DTOs, filtros (correlation, security headers, rate limit)
 - **report** — renderização HTML/PDF
+
+## Segurança por perfil
+
+| Perfil | Auth API | Swagger | TLS OIDC | Fail-fast |
+|--------|----------|---------|----------|-----------|
+| dev/test/demo | headers locais | ligado (demo/dev) | none | não |
+| prod | OIDC + audience/issuer | desligado | required | sim |
+
+## Observabilidade
+
+Ver `docs/OBSERVABILITY.md` — correlationId, logs JSON em prod, métricas Prometheus, live vs ready.
 
 ## Princípios
 
@@ -40,3 +60,4 @@
 - Transações na camada de aplicação
 - Entidades JPA não saem na API
 - Timestamps UTC; identificadores UUID
+- Secrets nunca em defaults de produção
