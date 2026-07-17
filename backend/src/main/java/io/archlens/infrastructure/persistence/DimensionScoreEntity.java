@@ -26,6 +26,11 @@ public class DimensionScoreEntity extends PanacheEntityBase {
     @Column(name = "updated_at")
     public Instant updatedAt;
 
+    public static List<DimensionScoreEntity> listByOrgAndAssessment(UUID orgId, UUID assessmentId) {
+        return list("organizationId = ?1 and assessmentId = ?2 order by dimensionKey", orgId, assessmentId);
+    }
+
+    /** @deprecated Prefer {@link #listByOrgAndAssessment(UUID, UUID)} */
     public static List<DimensionScoreEntity> listByAssessment(UUID assessmentId) {
         return list("assessmentId = ?1", assessmentId);
     }

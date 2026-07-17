@@ -23,8 +23,7 @@ public class AnalysisImportEntity extends PanacheEntityBase {
     public String schemaVersion;
     @Column(name = "analyzer_version")
     public String analyzerVersion;
-    @Lob
-    @Column(name = "raw_json")
+    @Column(name = "raw_json", columnDefinition = "text")
     public String rawJson;
     @Column(name = "imported_at")
     public Instant importedAt;

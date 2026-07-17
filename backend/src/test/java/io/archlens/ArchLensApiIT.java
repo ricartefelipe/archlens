@@ -1,9 +1,11 @@
 package io.archlens;
 
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.*;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -14,6 +16,7 @@ import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
+@QuarkusTestResource(PostgresTestResource.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ArchLensApiIT {
 
@@ -21,11 +24,16 @@ class ArchLensApiIT {
     static String importId;
     static String findingId;
     static String snapshotId;
+    static String optionId;
+    static String publishedHtmlHash;
+    static int findingsCount;
 
+    static final String DEMO_JSON;
     static final String VALID_JSON;
 
     static {
         try {
+            DEMO_JSON = Files.readString(Path.of("src/test/resources/demo-analysis.json"));
             VALID_JSON = Files.readString(Path.of("src/test/resources/valid-analysis.json"));
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -42,6 +50,7 @@ class ArchLensApiIT {
                 .get("/api/v1/health")
         .then()
                 .statusCode(200)
+                .header("X-Correlation-Id", not(emptyOrNullString()))
                 .body("status", equalTo("UP"))
                 .body("rulesLoaded", greaterThanOrEqualTo(25));
     }
@@ -59,6 +68,7 @@ class ArchLensApiIT {
         .then()
                 .statusCode(201)
                 .body("name", equalTo("Demo Legacy"))
+                .body("status", equalTo("DRAFT"))
                 .extract().path("id");
         assertNotNull(assessmentId);
     }
@@ -76,46 +86,76 @@ class ArchLensApiIT {
                 .post("/api/v1/assessments/" + assessmentId + "/import")
         .then()
                 .statusCode(400)
-                .contentType("application/problem+json");
+                .contentType(containsString("application/problem+json"))
+                .body("correlationId", not(emptyOrNullString()));
     }
 
     @Test
     @Order(4)
-    void validImportMaterializesAndGeneratesFindings() {
-        String key = "import-key-1";
-        importId = given()
+    void oversizedPayloadRejected() {
+        String big = "{\"schemaVersion\":\"1.0.0\",\"pad\":\"" + "x".repeat(6_000_000) + "\"}";
+        given()
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
-                .header("Idempotency-Key", key)
+                .header("Idempotency-Key", "too-big")
                 .contentType(ContentType.JSON)
-                .body(VALID_JSON)
+                .body(big)
+        .when()
+                .post("/api/v1/assessments/" + assessmentId + "/import")
+        .then()
+                .statusCode(anyOf(is(413), is(400)));
+    }
+
+    @Test
+    @Order(5)
+    void realAnalyzerImportMaterializesAndGeneratesFindings() {
+        findingsCount = given()
+                .header("X-User", "tester")
+                .header("X-Roles", "ARCHITECT")
+                .header("Idempotency-Key", "import-demo-1")
+                .contentType(ContentType.JSON)
+                .body(DEMO_JSON)
         .when()
                 .post("/api/v1/assessments/" + assessmentId + "/import")
         .then()
                 .statusCode(200)
                 .body("findingsCount", greaterThan(0))
-                .extract().path("importId");
+                .body("contentHash", startsWith("sha256:"))
+                .extract().path("findingsCount");
 
-        given()
+        importId = given()
                 .header("X-User", "tester")
                 .header("X-Roles", "VIEWER")
         .when()
                 .get("/api/v1/assessments/" + assessmentId + "/findings")
         .then()
                 .statusCode(200)
-                .body("size()", greaterThan(0))
-                .body("[0].evidenceIds", not(empty()));
+                .body("size()", equalTo(findingsCount))
+                .body("[0].evidenceIds", not(empty()))
+                .extract().path("[0].id");
+
+        findingId = importId;
+
+        given()
+                .header("X-User", "tester")
+                .header("X-Roles", "VIEWER")
+        .when()
+                .get("/api/v1/assessments/" + assessmentId + "/inventory")
+        .then()
+                .statusCode(200)
+                .body("modules.size()", greaterThan(0))
+                .body("types.size()", greaterThan(0));
     }
 
     @Test
-    @Order(5)
-    void importIsIdempotent() {
+    @Order(6)
+    void importIsIdempotentAndConflictsOnDifferentPayload() {
         String first = given()
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
                 .header("Idempotency-Key", "idem-key-stable")
                 .contentType(ContentType.JSON)
-                .body(VALID_JSON)
+                .body(DEMO_JSON)
         .when()
                 .post("/api/v1/assessments/" + assessmentId + "/import")
         .then()
@@ -127,7 +167,7 @@ class ArchLensApiIT {
                 .header("X-Roles", "ARCHITECT")
                 .header("Idempotency-Key", "idem-key-stable")
                 .contentType(ContentType.JSON)
-                .body(VALID_JSON)
+                .body(DEMO_JSON)
         .when()
                 .post("/api/v1/assessments/" + assessmentId + "/import")
         .then()
@@ -135,11 +175,23 @@ class ArchLensApiIT {
                 .extract().path("importId");
 
         assertEquals(first, second);
+
+        given()
+                .header("X-User", "tester")
+                .header("X-Roles", "ARCHITECT")
+                .header("Idempotency-Key", "idem-key-stable")
+                .contentType(ContentType.JSON)
+                .body(VALID_JSON)
+        .when()
+                .post("/api/v1/assessments/" + assessmentId + "/import")
+        .then()
+                .statusCode(409)
+                .contentType(containsString("application/problem+json"));
     }
 
     @Test
-    @Order(6)
-    void questionnaireChangesScores() {
+    @Order(7)
+    void questionnaireChangesScoresAndRejectsOutOfRange() {
         var before = given()
                 .header("X-User", "tester")
                 .header("X-Roles", "VIEWER")
@@ -148,6 +200,16 @@ class ArchLensApiIT {
         .then()
                 .statusCode(200)
                 .extract().jsonPath().getDouble("find { it.dimensionKey == 'BUSINESS_CRITICALITY' }.score");
+
+        given()
+                .header("X-User", "tester")
+                .header("X-Roles", "ARCHITECT")
+                .contentType(ContentType.JSON)
+                .body(Map.of("answers", Map.of("business_criticality", 9)))
+        .when()
+                .post("/api/v1/assessments/" + assessmentId + "/questionnaire")
+        .then()
+                .statusCode(400);
 
         given()
                 .header("X-User", "tester")
@@ -174,23 +236,16 @@ class ArchLensApiIT {
                 .get("/api/v1/assessments/" + assessmentId + "/dimensions")
         .then()
                 .statusCode(200)
+                .body("find { it.dimensionKey == 'BUSINESS_CRITICALITY' }.rationale",
+                        containsString("apoiam decisão"))
                 .extract().jsonPath().getDouble("find { it.dimensionKey == 'BUSINESS_CRITICALITY' }.score");
 
         assertTrue(after > before, "Questionário deve aumentar BUSINESS_CRITICALITY");
     }
 
     @Test
-    @Order(7)
+    @Order(8)
     void reviewFindingCreatesAuditEvent() {
-        findingId = given()
-                .header("X-User", "tester")
-                .header("X-Roles", "VIEWER")
-        .when()
-                .get("/api/v1/assessments/" + assessmentId + "/findings")
-        .then()
-                .statusCode(200)
-                .extract().path("[0].id");
-
         given()
                 .header("X-User", "architect")
                 .header("X-Roles", "ARCHITECT")
@@ -200,7 +255,8 @@ class ArchLensApiIT {
                 .patch("/api/v1/assessments/" + assessmentId + "/findings/" + findingId)
         .then()
                 .statusCode(200)
-                .body("status", equalTo("APPROVED"));
+                .body("status", equalTo("APPROVED"))
+                .body("reviewedBy", equalTo("architect"));
 
         given()
                 .header("X-User", "tester")
@@ -213,8 +269,60 @@ class ArchLensApiIT {
     }
 
     @Test
-    @Order(8)
-    void publishedSnapshotIsImmutable() {
+    @Order(9)
+    void modernizationAndRoadmap() {
+        optionId = given()
+                .header("X-User", "tester")
+                .header("X-Roles", "ARCHITECT")
+                .contentType(ContentType.JSON)
+                .body(Map.of(
+                        "title", "Strangler Fig",
+                        "description", "Extrair APIs",
+                        "effort", "HIGH",
+                        "impact", "HIGH"
+                ))
+        .when()
+                .post("/api/v1/assessments/" + assessmentId + "/modernization-options")
+        .then()
+                .statusCode(201)
+                .extract().path("id");
+
+        given()
+                .header("X-User", "tester")
+                .header("X-Roles", "ARCHITECT")
+                .contentType(ContentType.JSON)
+                .body(Map.of(
+                        "title", "Fase 1 — estabilizar",
+                        "description", "Hotfixes e observabilidade",
+                        "phase", "SHORT_TERM",
+                        "sortOrder", 1,
+                        "modernizationOptionId", optionId
+                ))
+        .when()
+                .post("/api/v1/assessments/" + assessmentId + "/roadmap")
+        .then()
+                .statusCode(201)
+                .body("phase", equalTo("SHORT_TERM"));
+
+        given()
+                .header("X-User", "tester")
+                .header("X-Roles", "ARCHITECT")
+                .contentType(ContentType.JSON)
+                .body(Map.of(
+                        "title", "bad",
+                        "description", "x",
+                        "phase", "MAGIC",
+                        "sortOrder", 1
+                ))
+        .when()
+                .post("/api/v1/assessments/" + assessmentId + "/roadmap")
+        .then()
+                .statusCode(400);
+    }
+
+    @Test
+    @Order(10)
+    void reportHtmlPdfAndImmutableSnapshot() {
         snapshotId = given()
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
@@ -222,7 +330,45 @@ class ArchLensApiIT {
                 .post("/api/v1/assessments/" + assessmentId + "/reports/generate")
         .then()
                 .statusCode(200)
+                .body("contentHash", startsWith("sha256:"))
                 .extract().path("id");
+
+        String html = given()
+                .header("X-User", "tester")
+                .header("X-Roles", "VIEWER")
+        .when()
+                .get("/api/v1/assessments/" + assessmentId + "/reports/" + snapshotId + "/html")
+        .then()
+                .statusCode(200)
+                .contentType(containsString("text/html"))
+                .header("Content-Disposition", containsString("report-v"))
+                .extract().asString();
+
+        assertTrue(html.contains("Relatório ArchLens"));
+        assertTrue(html.contains("Limitações"));
+        assertTrue(html.contains("Roadmap"));
+        publishedHtmlHash = given()
+                .header("X-User", "tester")
+                .header("X-Roles", "ARCHITECT")
+        .when()
+                .get("/api/v1/assessments/" + assessmentId + "/reports")
+        .then()
+                .statusCode(200)
+                .extract().path("find { it.id == '" + snapshotId + "' }.contentHash");
+
+        byte[] pdf = given()
+                .header("X-User", "tester")
+                .header("X-Roles", "VIEWER")
+        .when()
+                .get("/api/v1/assessments/" + assessmentId + "/reports/" + snapshotId + "/pdf")
+        .then()
+                .statusCode(200)
+                .contentType(containsString("application/pdf"))
+                .header("Content-Disposition", containsString(".pdf"))
+                .extract().asByteArray();
+
+        assertTrue(pdf.length >= 100);
+        assertEquals("%PDF", new String(pdf, 0, 4, StandardCharsets.US_ASCII));
 
         given()
                 .header("X-User", "tester")
@@ -238,6 +384,61 @@ class ArchLensApiIT {
                 .header("X-Roles", "ARCHITECT")
         .when()
                 .post("/api/v1/assessments/" + assessmentId + "/reports/" + snapshotId + "/publish")
+        .then()
+                .statusCode(409);
+
+        given()
+                .header("X-User", "tester")
+                .header("X-Roles", "ARCHITECT")
+                .contentType(ContentType.JSON)
+                .body(Map.of("name", "Demo Legacy Renamed"))
+        .when()
+                .put("/api/v1/assessments/" + assessmentId)
+        .then()
+                .statusCode(200);
+
+        String htmlAfter = given()
+                .header("X-User", "tester")
+                .header("X-Roles", "VIEWER")
+        .when()
+                .get("/api/v1/assessments/" + assessmentId + "/reports/" + snapshotId + "/html")
+        .then()
+                .statusCode(200)
+                .extract().asString();
+
+        assertTrue(htmlAfter.contains("Demo Legacy"));
+        assertFalse(htmlAfter.contains("Demo Legacy Renamed"));
+        assertEquals(publishedHtmlHash, given()
+                .header("X-User", "tester")
+                .header("X-Roles", "VIEWER")
+        .when()
+                .get("/api/v1/assessments/" + assessmentId + "/reports")
+        .then()
+                .extract().path("find { it.id == '" + snapshotId + "' }.contentHash"));
+    }
+
+    @Test
+    @Order(11)
+    void completedBlocksImport() {
+        given()
+                .header("X-User", "tester")
+                .header("X-Roles", "ADMIN")
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", "COMPLETED"))
+        .when()
+                .put("/api/v1/assessments/" + assessmentId)
+        .then()
+                .statusCode(200)
+                .body("status", equalTo("COMPLETED"));
+
+        given()
+                .header("X-User", "tester")
+                .header("X-Roles", "ARCHITECT")
+                .header("Idempotency-Key", "after-complete")
+                .contentType(ContentType.JSON)
+                .body(DEMO_JSON)
+        .when()
+                .post("/api/v1/assessments/" + assessmentId + "/import")
         .then()
                 .statusCode(400);
     }

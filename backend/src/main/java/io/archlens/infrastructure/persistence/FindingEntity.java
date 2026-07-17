@@ -22,7 +22,7 @@ public class FindingEntity extends PanacheEntityBase {
     @Column(name = "rule_id")
     public String ruleId;
     public String title;
-    @Lob
+    @Column(columnDefinition = "text")
     public String description;
     @Enumerated(EnumType.STRING)
     public FindingSeverity severity;
@@ -44,11 +44,22 @@ public class FindingEntity extends PanacheEntityBase {
     @Column(name = "updated_at")
     public Instant updatedAt;
 
+    public static List<FindingEntity> listByOrgAndAssessment(UUID orgId, UUID assessmentId) {
+        return list("organizationId = ?1 and assessmentId = ?2 order by severity, title", orgId, assessmentId);
+    }
+
+    /** @deprecated Use {@link #listByOrgAndAssessment(UUID, UUID)} */
     public static List<FindingEntity> listByAssessment(UUID assessmentId) {
         return list("assessmentId = ?1 order by severity, title", assessmentId);
     }
 
-    public static FindingEntity findByAssessmentAndId(UUID assessmentId, UUID id) {
-        return find("assessmentId = ?1 and id = ?2", assessmentId, id).firstResult();
+    public static FindingEntity findByOrgAssessmentAndId(UUID orgId, UUID assessmentId, UUID id) {
+        return find("organizationId = ?1 and assessmentId = ?2 and id = ?3", orgId, assessmentId, id)
+                .firstResult();
+    }
+
+    public static FindingEntity findByOrgAssessmentAndRule(UUID orgId, UUID assessmentId, String ruleId) {
+        return find("organizationId = ?1 and assessmentId = ?2 and ruleId = ?3", orgId, assessmentId, ruleId)
+                .firstResult();
     }
 }

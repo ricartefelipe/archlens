@@ -17,7 +17,7 @@ public class RoadmapItemEntity extends PanacheEntityBase {
     @Column(name = "assessment_id", columnDefinition = "uuid")
     public UUID assessmentId;
     public String title;
-    @Lob
+    @Column(columnDefinition = "text")
     public String description;
     public String phase;
     @Column(name = "sort_order")
@@ -29,7 +29,12 @@ public class RoadmapItemEntity extends PanacheEntityBase {
     @Column(name = "updated_at")
     public Instant updatedAt;
 
-    public static List<RoadmapItemEntity> listByAssessment(UUID assessmentId) {
-        return list("assessmentId = ?1 order by sortOrder", assessmentId);
+    public static List<RoadmapItemEntity> listByOrgAndAssessment(UUID orgId, UUID assessmentId) {
+        return list("organizationId = ?1 and assessmentId = ?2 order by sortOrder, title", orgId, assessmentId);
+    }
+
+    public static RoadmapItemEntity findByOrgAssessmentAndId(UUID orgId, UUID assessmentId, UUID id) {
+        return find("organizationId = ?1 and assessmentId = ?2 and id = ?3", orgId, assessmentId, id)
+                .firstResult();
     }
 }

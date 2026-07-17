@@ -11,6 +11,8 @@ public class InventorySecretEntity extends PanacheEntityBase {
     @Id
     @Column(columnDefinition = "uuid")
     public UUID id;
+    @Column(name = "organization_id", columnDefinition = "uuid")
+    public UUID organizationId;
     @Column(name = "assessment_id", columnDefinition = "uuid")
     public UUID assessmentId;
     public String type;
