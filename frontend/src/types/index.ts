@@ -25,8 +25,10 @@ export interface Assessment {
   name: string;
   description?: string;
   status: AssessmentStatus;
-  organizationId: string;
+  /** Presente quando a API expõe o tenant; pode estar vazio em respostas atuais. */
+  organizationId?: string;
   targetProjectName?: string;
+  projectRootName?: string;
   createdAt: string;
   updatedAt: string;
   createdBy: string;
@@ -153,16 +155,20 @@ export interface DimensionScore {
   }>;
 }
 
+export type RoadmapPhase = "SHORT_TERM" | "MEDIUM_TERM" | "LONG_TERM";
+
 export interface RoadmapItem {
   id: string;
   title: string;
   description: string;
   priority?: "HIGH" | "MEDIUM" | "LOW";
   effort?: "SMALL" | "MEDIUM" | "LARGE" | string;
-  phase: number | string;
+  /** Contrato backend: SHORT_TERM | MEDIUM_TERM | LONG_TERM */
+  phase: RoadmapPhase | string;
   order?: number;
   status?: "PLANNED" | "IN_PROGRESS" | "DONE";
   linkedFindingIds?: string[];
+  modernizationOptionId?: string | null;
 }
 
 export interface ReportSnapshot {
@@ -205,8 +211,21 @@ export interface PaginatedResponse<T> {
   pageSize: number;
 }
 
+export interface ProblemDetails {
+  type?: string;
+  title?: string;
+  status?: number;
+  detail?: string;
+  instance?: string;
+  correlationId?: string;
+}
+
 export interface ApiError {
   status: number;
   message: string;
+  title?: string;
+  detail?: string;
+  correlationId?: string;
+  type?: string;
   details?: string;
 }

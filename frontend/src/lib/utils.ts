@@ -45,8 +45,23 @@ export function downloadBlob(blob: Blob, filename: string): void {
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
+  document.body.appendChild(anchor);
   anchor.click();
+  anchor.remove();
   URL.revokeObjectURL(url);
+}
+
+export function downloadBase64(
+  base64: string,
+  filename: string,
+  contentType: string,
+): void {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  downloadBlob(new Blob([bytes], { type: contentType }), filename);
 }
 
 export function formatDate(iso: string): string {

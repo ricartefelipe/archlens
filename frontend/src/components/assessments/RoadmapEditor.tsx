@@ -6,7 +6,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { saveRoadmapAction } from "@/lib/actions/assessments";
-import type { RoadmapItem } from "@/types";
+import { ApiClientError } from "@/lib/api/client";
+import type { RoadmapItem, RoadmapPhase } from "@/types";
+
+const PHASES: RoadmapPhase[] = ["SHORT_TERM", "MEDIUM_TERM", "LONG_TERM"];
 
 function emptyItem(): RoadmapItem {
   return {
@@ -15,7 +18,7 @@ function emptyItem(): RoadmapItem {
     description: "",
     priority: "MEDIUM",
     effort: "MEDIUM",
-    phase: 1,
+    phase: "SHORT_TERM",
     status: "PLANNED",
   };
 }
@@ -42,6 +45,7 @@ export function RoadmapEditor({
   }
 
   async function handleSave() {
+    if (saving) return;
     setSaving(true);
     setError(null);
     try {
@@ -49,7 +53,11 @@ export function RoadmapEditor({
       setItems(savedItems);
       setSaved(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao salvar roadmap");
+      if (err instanceof ApiClientError && err.status === 403) {
+        setError("Você não tem permissão para editar o roadmap.");
+      } else {
+        setError(err instanceof Error ? err.message : "Erro ao salvar roadmap");
+      }
     } finally {
       setSaving(false);
     }
@@ -59,7 +67,8 @@ export function RoadmapEditor({
     <div className="space-y-4">
       {items.length === 0 ? (
         <p className="text-sm text-slate-600">
-          Nenhum item de roadmap. {canEdit ? "Adicione opções de modernização abaixo." : ""}
+          Nenhum item de roadmap.{" "}
+          {canEdit ? "Adicione opções de modernização abaixo." : ""}
         </p>
       ) : null}
 
@@ -67,11 +76,14 @@ export function RoadmapEditor({
         <Card key={item.id}>
           <CardHeader
             title={item.title || "Novo item"}
-            action={<Badge label={item.priority ?? "MEDIUM"} />}
+            action={<Badge label={String(item.phase)} />}
           />
           <CardBody className="space-y-3">
             <div>
-              <label className="block text-sm font-medium" htmlFor={`title-${item.id}`}>
+              <label
+                className="block text-sm font-medium"
+                htmlFor={`title-${item.id}`}
+              >
                 Título
               </label>
               <input
@@ -102,24 +114,36 @@ export function RoadmapEditor({
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <div>
-                <label className="block text-sm font-medium" htmlFor={`phase-${item.id}`}>
+                <label
+                  className="block text-sm font-medium"
+                  htmlFor={`phase-${item.id}`}
+                >
                   Fase
                 </label>
-                <input
+                <select
                   id={`phase-${item.id}`}
-                  type="number"
-                  min={1}
                   disabled={!canEdit}
                   value={item.phase}
                   onChange={(e) =>
-                    updateItem(item.id, { phase: Number(e.target.value) })
+                    updateItem(item.id, {
+                      phase: e.target.value as RoadmapPhase,
+                    })
                   }
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                />
+                >
+                  {PHASES.map((phase) => (
+                    <option key={phase} value={phase}>
+                      {phase}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
-                <label className="block text-sm font-medium" htmlFor={`effort-${item.id}`}>
-                  Esforço
+                <label
+                  className="block text-sm font-medium"
+                  htmlFor={`effort-${item.id}`}
+                >
+                  Esforço (local)
                 </label>
                 <select
                   id={`effort-${item.id}`}
@@ -138,8 +162,11 @@ export function RoadmapEditor({
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium" htmlFor={`status-${item.id}`}>
-                  Status
+                <label
+                  className="block text-sm font-medium"
+                  htmlFor={`status-${item.id}`}
+                >
+                  Status (local)
                 </label>
                 <select
                   id={`status-${item.id}`}
@@ -158,6 +185,17 @@ export function RoadmapEditor({
                 </select>
               </div>
             </div>
+            {canEdit ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  setItems((prev) => prev.filter((i) => i.id !== item.id))
+                }
+              >
+                Remover item
+              </Button>
+            ) : null}
           </CardBody>
         </Card>
       ))}
@@ -171,7 +209,10 @@ export function RoadmapEditor({
 
       {canEdit ? (
         <div className="flex flex-wrap gap-3">
-          <Button variant="secondary" onClick={() => setItems((prev) => [...prev, emptyItem()])}>
+          <Button
+            variant="secondary"
+            onClick={() => setItems((prev) => [...prev, emptyItem()])}
+          >
             Adicionar item
           </Button>
           <Button onClick={() => void handleSave()} disabled={saving}>

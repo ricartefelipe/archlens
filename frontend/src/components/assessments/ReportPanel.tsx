@@ -5,26 +5,25 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
+import type { AuthContext } from "@/lib/api/assessments";
 import {
-  downloadReport,
-  type AuthContext,
-} from "@/lib/api/assessments";
-import {
+  downloadReportAction,
   generateReportAction,
   publishReportAction,
 } from "@/lib/actions/assessments";
-import { downloadBlob, formatDate } from "@/lib/utils";
+import { ApiClientError } from "@/lib/api/client";
+import { downloadBase64, formatDate } from "@/lib/utils";
 import type { ReportSnapshot } from "@/types";
 
 export function ReportPanel({
   assessmentId,
   initialSnapshot,
   canEdit,
-  auth,
 }: {
   assessmentId: string;
   initialSnapshot: ReportSnapshot | null;
   canEdit: boolean;
+  /** Mantido por compatibilidade das páginas; downloads usam server actions. */
   auth?: AuthContext;
 }) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
@@ -32,37 +31,45 @@ export function ReportPanel({
   const [error, setError] = useState<string | null>(null);
 
   async function handleGenerate() {
+    if (loading) return;
     setLoading(true);
     setError(null);
     try {
       setSnapshot(await generateReportAction(assessmentId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao gerar relatório");
+      setError(mapErr(err, "Erro ao gerar relatório"));
     } finally {
       setLoading(false);
     }
   }
 
   async function handlePublish() {
+    if (loading || !snapshot) return;
+    const confirmed = window.confirm(
+      "Publicar torna o snapshot imutável. Confirmar publicação?",
+    );
+    if (!confirmed) return;
+
     setLoading(true);
     setError(null);
     try {
       setSnapshot(await publishReportAction(assessmentId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao publicar relatório");
+      setError(mapErr(err, "Erro ao publicar relatório"));
     } finally {
       setLoading(false);
     }
   }
 
   async function handleDownload(format: "html" | "pdf") {
+    if (loading || !snapshot) return;
     setLoading(true);
     setError(null);
     try {
-      const blob = await downloadReport(assessmentId, format, auth);
-      downloadBlob(blob, `report-${assessmentId}.${format}`);
+      const result = await downloadReportAction(assessmentId, format);
+      downloadBase64(result.base64, result.filename, result.contentType);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao baixar relatório");
+      setError(mapErr(err, "Erro ao baixar relatório"));
     } finally {
       setLoading(false);
     }
@@ -95,7 +102,11 @@ export function ReportPanel({
               </div>
               <div>
                 <dt className="text-slate-500">Gerado em</dt>
-                <dd>{formatDate(snapshot.generatedAt ?? snapshot.createdAt ?? "")}</dd>
+                <dd>
+                  {formatDate(
+                    snapshot.generatedAt ?? snapshot.createdAt ?? "",
+                  )}
+                </dd>
               </div>
               {snapshot.publishedAt ? (
                 <div>
@@ -115,13 +126,21 @@ export function ReportPanel({
           <div className="flex flex-wrap gap-3">
             {canEdit ? (
               <>
-                <Button onClick={() => void handleGenerate()} disabled={loading}>
+                <Button
+                  onClick={() => void handleGenerate()}
+                  disabled={loading}
+                >
                   {loading ? "Processando…" : "Gerar relatório"}
                 </Button>
                 <Button
                   variant="secondary"
                   onClick={() => void handlePublish()}
-                  disabled={loading || !snapshot}
+                  disabled={
+                    loading ||
+                    !snapshot ||
+                    snapshot.published ||
+                    snapshot.status === "PUBLISHED"
+                  }
                 >
                   Publicar
                 </Button>
@@ -146,4 +165,14 @@ export function ReportPanel({
       </Card>
     </div>
   );
+}
+
+function mapErr(err: unknown, fallback: string): string {
+  if (err instanceof ApiClientError) {
+    if (err.status === 403) return "Você não tem permissão para esta ação.";
+    if (err.status === 401) return "Sessão expirada. Faça login novamente.";
+    if (err.status === 409) return err.message || "Publicação duplicada ou conflito.";
+    return err.message;
+  }
+  return err instanceof Error ? err.message : fallback;
 }

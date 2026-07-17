@@ -1,70 +1,51 @@
 # ArchLens — Tasks (estado persistente)
 
-Atualizado em 2026-07-17 (Prompt 2/5 — backend/persistência/regras/relatórios **concluído**).
+Atualizado em 2026-07-17 (Prompt 3/5 — frontend/auth/E2E **concluído**).
 
-## Diagnóstico Prompt 2 (antes das alterações)
+## Diagnóstico Prompt 3 (baseline antes das alterações)
 
-- Analyzer Prompt 1 OK: schema, CLI, `/tmp/archlens-demo-analysis.json`, testes do reactor analyzer verdes.
-- Backend existia, porém com lacunas críticas:
-  - Testes usavam **H2**, não PostgreSQL real (apesar de dependência Testcontainers).
-  - Isolamento org frágil: `findById` em snapshots/opções/roadmap; inventário sem `organization_id`.
-  - Import: sem limite de payload, sem 409 em chave+payload diferente, sem gating de status.
-  - `ReportService.renderPdf` engolia falhas com `byte[0]`; HTML incompleto.
-  - `@Lob` mapeava para OID no PostgreSQL → falha em auto-commit.
-  - Questionário/roadmap sem validação de faixa/fase; Problem JSON sem `correlationId`.
+- Projeto ArchLens confirmado (analyzer + backend + frontend + infra).
+- Baseline frontend: `npm ci` OK; lint com 4 warnings (roles não usados); `tsc` OK; `build` OK.
+- Lacunas:
+  - Cliente API sem Problem Details / correlationId / timeout.
+  - Login local sempre ativo (senhas no módulo auth); Keycloak em porta errada no `.env.local`.
+  - Fallback silencioso `X-Roles=ADMIN` via `NEXT_PUBLIC_DEV_*`.
+  - Roadmap enviava `phase` numérica; backend exige `SHORT_TERM|MEDIUM_TERM|LONG_TERM`.
+  - Upload sem validação client-side; downloads dependiam de CORS frágil.
+  - E2E apenas smoke; testes unitários ausentes.
+  - Compose: OIDC desligado no backend (headers locais); Keycloak client público.
 
-## Plano Prompt 2 — executado
+## Plano Prompt 3 — executado
 
-1. [x] PostgreSQL real via Testcontainers (`PostgresTestResource`) + Liquibase migrate-at-start
-2. [x] Migration `002` (índices compostos + `organization_id` no inventário)
-3. [x] Isolamento org em consultas Panache + header `X-Organization-Id` + testes negativos 404
-4. [x] Import: schema, max-bytes, idempotência/conflito 409, status, merge de findings, fixture real
-5. [x] Motor de regras: IDs únicos no startup; evidências; ≥1 match + determinismo
-6. [x] Questionário/scores com faixa 1–5, rationale e disclaimer
-7. [x] Modernização/roadmap (effort/impact/phase) + refs na mesma org/assessment
-8. [x] Relatório HTML/PDF válidos, snapshot imutável (409 na 2ª publicação)
-9. [x] `application/problem+json` + `correlationId`
-10. [x] Suíte IT PostgreSQL verde (20 testes)
+1. [x] Cliente API: base URL, timeout, correlationId, `application/problem+json`, download com content-type/filename
+2. [x] Auth: `AUTH_LOCAL_ENABLED`; Keycloak opcional; middleware; papéis na UI; 401/403 tratados
+3. [x] Jornada UX: criação, import (validação), inventário, findings, questionário, scores, roadmap, relatório/publicação/download, auditoria
+4. [x] Segurança UI: sem log de token/JSON; upload validado; downloads via server action; Mermaid strict
+5. [x] Testes unitários (Vitest 12) + Playwright real (10)
+6. [x] Quality gate: lint / typecheck / test / build / E2E
+7. [x] CORS backend: `quarkus.http.cors.enabled=true`; client Keycloak confidential para NextAuth
 
-## 0. Fundação
+## 0–2. Fundação / Analyzer / Backend
 
-- [x] Inspeção do repositório (vazio)
-- [x] `IMPLEMENTATION_PLAN.md` / `TASKS.md` / `DECISIONS.md`
-- [x] Estrutura monorepo + README raiz
-- [x] `contracts/analysis.schema.json`
-- [x] Sample `legacy-java-demo`
+- Ver histórico Prompt 1 e 2 (concluídos).
 
-## 1. Analyzer (Prompt 1)
+## 3. Frontend (Prompt 3)
 
-- [x] Core + CLI + schema sync + docs + quality gate
-
-## 2. Backend (Prompt 2)
-
-- [x] Liquibase YAML PostgreSQL + migration corretiva 002
-- [x] Import analysis real + inventário atômico + idempotência
-- [x] ≥25 regras YAML + engine
-- [x] Questionário versionado + dimensões
-- [x] Achados (status) + revisão + auditoria
-- [x] Opções modernização + roadmap
-- [x] Relatório HTML/PDF + snapshot imutável
-- [x] Isolamento multi-org (header + consultas tenant-scoped)
-- [x] NarrativeGenerator template (LLM off por padrão)
-- [x] Testes PostgreSQL: `ArchLensApiIT` + `OrgIsolationIT` + `LiquibaseMigrationIT` + `RuleEngineTest` — **20/20**
-
-## 3. Frontend
-
-- [x] Jornada E2E básica (Prompt anterior)
-- [ ] Prompt 3+: consumir explicitamente `detector`/`confidence`/`durationMs` se UI exigir
+- [x] Rotas e componentes da jornada
+- [x] Contratos alinhados (assessment `projectRootName`, roadmap phases, Problem Details)
+- [x] A11y básica (labels, alertas, foco em controles)
+- [x] E2E Compose/Playwright com serviços reais (Postgres + backend + frontend local)
 
 ## 4. Infra / CI / Docs
 
-- [x] docker-compose + Keycloak + CI
-- [ ] E2E Playwright/Compose completo no host
-- [x] Threat model, ADRs, runbook, architecture
+- [x] docker-compose com env de auth no frontend
+- [x] E2E Playwright hospedado (stack parcial Compose + frontend `npm run dev`)
+- [ ] Endurecer OIDC end-to-end (backend `ARCHLENS_OIDC_ENABLED=true` + token real)
+- [x] Threat model / ADRs / runbook (pré-existentes)
 
 ## Pendências para o próximo prompt
 
-- UI alinhada a campos novos do analysis.json.
-- Cobertura E2E Compose + Playwright.
-- Endurecer OIDC multi-tenant além do header local `X-Organization-Id`.
-- Política de retenção/compactação de `raw_json` em produção.
+- Ligar OIDC no backend no Compose integrado e validar Bearer (não só `X-User`/`X-Roles`).
+- Filtros de findings no servidor (hoje filtragem client-side após GET completo).
+- Política de retenção de `raw_json` e UI de modernização options dedicada.
+- Dependência CORS do Quarkus: confirmar headers `Access-Control-*` após rebuild limpo (downloads críticos já vão por server action).

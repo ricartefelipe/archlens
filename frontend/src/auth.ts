@@ -6,65 +6,79 @@ import type { UserRole } from "@/types";
 
 const keycloakConfigured =
   Boolean(process.env.KEYCLOAK_CLIENT_ID) &&
-  Boolean(process.env.KEYCLOAK_CLIENT_SECRET) &&
   Boolean(process.env.KEYCLOAK_ISSUER);
 
-const localUsers: Record<
+/** Login local somente quando explicitamente habilitado (dev/teste). */
+const localAuthEnabled = process.env.AUTH_LOCAL_ENABLED === "true";
+
+function loadLocalUsers(): Record<
   string,
   { password: string; roles: UserRole[]; name: string }
-> = {
-  admin: {
-    password: "admin123",
-    roles: ["ADMIN", "ARCHITECT", "VIEWER"],
-    name: "Ada Admin",
-  },
-  architect: {
-    password: "architect123",
-    roles: ["ARCHITECT", "VIEWER"],
-    name: "Alex Architect",
-  },
-  viewer: {
-    password: "viewer123",
-    roles: ["VIEWER"],
-    name: "Vera Viewer",
-  },
-};
+> {
+  if (!localAuthEnabled) {
+    return {};
+  }
+  // Credenciais apenas em runtime server-side; nunca embutidas no client bundle.
+  return {
+    admin: {
+      password: process.env.AUTH_LOCAL_ADMIN_PASSWORD ?? "admin123",
+      roles: ["ADMIN", "ARCHITECT", "VIEWER"],
+      name: "Ada Admin",
+    },
+    architect: {
+      password: process.env.AUTH_LOCAL_ARCHITECT_PASSWORD ?? "architect123",
+      roles: ["ARCHITECT", "VIEWER"],
+      name: "Alex Architect",
+    },
+    viewer: {
+      password: process.env.AUTH_LOCAL_VIEWER_PASSWORD ?? "viewer123",
+      roles: ["VIEWER"],
+      name: "Vera Viewer",
+    },
+  };
+}
+
+const providers = [
+  ...(keycloakConfigured
+    ? [
+        Keycloak({
+          clientId: process.env.KEYCLOAK_CLIENT_ID!,
+          clientSecret: process.env.KEYCLOAK_CLIENT_SECRET ?? "",
+          issuer: process.env.KEYCLOAK_ISSUER!,
+        }),
+      ]
+    : []),
+  ...(localAuthEnabled
+    ? [
+        Credentials({
+          id: "local",
+          name: "Local",
+          credentials: {
+            username: { label: "Usuário", type: "text" },
+            password: { label: "Senha", type: "password" },
+          },
+          async authorize(credentials) {
+            const username = String(credentials?.username ?? "");
+            const password = String(credentials?.password ?? "");
+            const user = loadLocalUsers()[username];
+            if (!user || user.password !== password) {
+              return null;
+            }
+            return {
+              id: username,
+              name: user.name,
+              email: `${username}@archlens.local`,
+              roles: user.roles,
+            };
+          },
+        }),
+      ]
+    : []),
+];
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "archlens-dev-secret",
-  providers: [
-    ...(keycloakConfigured
-      ? [
-          Keycloak({
-            clientId: process.env.KEYCLOAK_CLIENT_ID!,
-            clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
-            issuer: process.env.KEYCLOAK_ISSUER!,
-          }),
-        ]
-      : []),
-    Credentials({
-      id: "local",
-      name: "Local",
-      credentials: {
-        username: { label: "Usuário", type: "text" },
-        password: { label: "Senha", type: "password" },
-      },
-      async authorize(credentials) {
-        const username = String(credentials?.username ?? "");
-        const password = String(credentials?.password ?? "");
-        const user = localUsers[username];
-        if (!user || user.password !== password) {
-          return null;
-        }
-        return {
-          id: username,
-          name: user.name,
-          email: `${username}@archlens.local`,
-          roles: user.roles,
-        };
-      },
-    }),
-  ],
+  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+  providers,
   pages: {
     signIn: "/login",
   },
@@ -96,9 +110,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 });
 
 export function isAuthConfigured(): boolean {
-  return true;
+  return keycloakConfigured || localAuthEnabled;
 }
 
 export function isKeycloakConfigured(): boolean {
   return keycloakConfigured;
+}
+
+export function isLocalAuthEnabled(): boolean {
+  return localAuthEnabled;
 }

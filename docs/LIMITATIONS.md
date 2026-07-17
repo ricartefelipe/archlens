@@ -28,3 +28,11 @@
 
 - Placeholders e variáveis de ambiente óbvias são ignorados; ainda pode haver falso positivo/negativo.
 - O indicador de ocorrência não permite correlacionar o mesmo valor entre caminhos distintos só pelo hash nu.
+
+## Frontend / auth (Prompt 3)
+
+- No Compose local o backend opera com `ARCHLENS_OIDC_ENABLED=false` e identidade via headers `X-User`/`X-Roles` propagados pela sessão NextAuth (login local ou claims OIDC). OIDC completo no backend ainda é pendência.
+- Login local só com `AUTH_LOCAL_ENABLED=true`; não deve ser usado em produção.
+- Filtros de findings (status/severidade/busca) são aplicados no cliente após o GET da lista completa.
+- Downloads HTML/PDF/CSV passam por server actions (evitam CORS no browser); a validação de schema do `analysis.json` permanece no servidor.
+- Em restart agressivo do backend, o Liquibase pode ficar com changelog lock; liberar com `UPDATE databasechangeloglock SET locked=false...` e subir um único container.

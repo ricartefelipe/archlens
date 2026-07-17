@@ -20,7 +20,6 @@ export default async function DimensionsPage({
     user: session.userName ?? undefined,
     roles: session.roles,
   };
-  const roles = session.roles;
   let error: string | null = null;
   let dimensions: Awaited<ReturnType<typeof getDimensions>> = [];
 

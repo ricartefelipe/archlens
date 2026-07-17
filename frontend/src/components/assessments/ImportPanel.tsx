@@ -7,6 +7,11 @@ import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { uploadAnalysisAction } from "@/lib/actions/assessments";
 import { getImportStatus, type AuthContext } from "@/lib/api/assessments";
+import { ApiClientError } from "@/lib/api/client";
+import {
+  MAX_ANALYSIS_BYTES,
+  validateAnalysisFile,
+} from "@/lib/upload/validateAnalysisFile";
 import type { ImportJob } from "@/types";
 
 export function ImportPanel({
@@ -39,7 +44,7 @@ export function ImportPanel({
 
   async function handleUpload(event: React.FormEvent) {
     event.preventDefault();
-    if (!file) {
+    if (!file || uploading) {
       return;
     }
 
@@ -47,16 +52,28 @@ export function ImportPanel({
     setError(null);
 
     try {
+      const validation = await validateAnalysisFile(file);
+      if (!validation.ok) {
+        setError(validation.message);
+        return;
+      }
+
       const formData = new FormData();
       formData.append("file", file);
       const result = await uploadAnalysisAction(assessmentId, formData);
       setJob(result);
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Falha no upload. Verifique o backend e o formato do JSON.",
-      );
+      if (err instanceof ApiClientError && err.status === 403) {
+        setError("Você não tem permissão para importar análises.");
+      } else if (err instanceof ApiClientError && err.status === 401) {
+        setError("Sessão expirada. Faça login novamente.");
+      } else {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Falha no upload. Verifique o backend e o formato do JSON.",
+        );
+      }
     } finally {
       setUploading(false);
     }
@@ -78,7 +95,10 @@ export function ImportPanel({
                 {`java -jar archlens-cli.jar scan --path /caminho/do/projeto --out analysis.json\njava -jar archlens-cli.jar validate --file analysis.json`}
               </pre>
             </li>
-            <li>Faça upload do arquivo <code>analysis.json</code> abaixo.</li>
+            <li>
+              Faça upload do arquivo <code>analysis.json</code> abaixo (máx.{" "}
+              {MAX_ANALYSIS_BYTES.toLocaleString("pt-BR")} bytes).
+            </li>
           </ol>
         </CardBody>
       </Card>
@@ -86,9 +106,12 @@ export function ImportPanel({
       <Card>
         <CardHeader title="Upload analysis.json" />
         <CardBody>
-          <form onSubmit={handleUpload} className="space-y-4">
+          <form onSubmit={(e) => void handleUpload(e)} className="space-y-4">
             <div>
-              <label htmlFor="analysis-file" className="block text-sm font-medium">
+              <label
+                htmlFor="analysis-file"
+                className="block text-sm font-medium"
+              >
                 Arquivo JSON *
               </label>
               <input
@@ -96,13 +119,12 @@ export function ImportPanel({
                 type="file"
                 accept="application/json,.json"
                 required
+                disabled={uploading}
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 className="mt-1 block w-full text-sm text-slate-600 file:mr-4 file:rounded-md file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-brand-700"
               />
             </div>
-            {error ? (
-              <ErrorState message={error} />
-            ) : null}
+            {error ? <ErrorState message={error} /> : null}
             <Button type="submit" disabled={uploading || !file}>
               {uploading ? "Enviando…" : "Importar análise"}
             </Button>
@@ -128,7 +150,7 @@ export function ImportPanel({
               </p>
             ) : null}
             {job.status === "COMPLETED" ? (
-              <p className="text-green-700">
+              <p className="text-green-700" role="status">
                 Importação concluída. Continue para inventário e achados.
               </p>
             ) : null}
