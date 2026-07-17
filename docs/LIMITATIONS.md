@@ -29,10 +29,13 @@
 - Placeholders e variáveis de ambiente óbvias são ignorados; ainda pode haver falso positivo/negativo.
 - O indicador de ocorrência não permite correlacionar o mesmo valor entre caminhos distintos só pelo hash nu.
 
-## Frontend / auth (Prompt 3)
+## Frontend / auth
 
-- No Compose local o backend opera com `ARCHLENS_OIDC_ENABLED=false` e identidade via headers `X-User`/`X-Roles` propagados pela sessão NextAuth (login local ou claims OIDC). OIDC completo no backend ainda é pendência.
-- Login local só com `AUTH_LOCAL_ENABLED=true`; não deve ser usado em produção.
-- Filtros de findings (status/severidade/busca) são aplicados no cliente após o GET da lista completa.
-- Downloads HTML/PDF/CSV passam por server actions (evitam CORS no browser); a validação de schema do `analysis.json` permanece no servidor.
-- Em restart agressivo do backend, o Liquibase pode ficar com changelog lock; liberar com `UPDATE databasechangeloglock SET locked=false...` e subir um único container.
+- No Compose **demo** o backend usa `QUARKUS_PROFILE=demo` com `ARCHLENS_LOCAL_HEADER_AUTH=true` (headers `X-User`/`X-Roles`). Isso é explícito e **não** é produção.
+- Perfil `%prod` exige OIDC, rejeita header auth e falha no startup se secrets/CORS/TLS estiverem inseguros.
+- Login local só com `AUTH_LOCAL_ENABLED=true`; proibido em produção.
+- OIDC Bearer ponta a ponta no Compose ainda não é o caminho padrão (implementado no backend prod; não totalmente testado E2E).
+- Filtros de findings (status/severidade/busca) são client-side após GET completo.
+- Downloads HTML/PDF/CSV via server actions; schema do `analysis.json` no servidor.
+- Rate limit de import é in-memory (não compartilhado entre réplicas).
+- Em restart agressivo, Liquibase pode ficar com changelog lock; liberar com `UPDATE databasechangeloglock SET locked=false...`.

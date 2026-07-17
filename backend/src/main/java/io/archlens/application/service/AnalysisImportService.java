@@ -9,6 +9,7 @@ import io.archlens.application.port.AnalysisSchemaValidator;
 import io.archlens.domain.AssessmentStatus;
 import io.archlens.domain.AuditAction;
 import io.archlens.domain.FindingStatus;
+import io.archlens.infrastructure.observability.ArchLensMetrics;
 import io.archlens.infrastructure.persistence.*;
 import io.archlens.infrastructure.security.IdentityService;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -23,9 +24,12 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.logging.Logger;
 
 @ApplicationScoped
 public class AnalysisImportService {
+
+    private static final Logger LOG = Logger.getLogger(AnalysisImportService.class);
 
     private static final Set<AssessmentStatus> IMPORTABLE = EnumSet.of(
             AssessmentStatus.DRAFT,
@@ -49,6 +53,8 @@ public class AnalysisImportService {
     IdentityService identityService;
     @Inject
     OrganizationService organizationService;
+    @Inject
+    ArchLensMetrics metrics;
 
     @ConfigProperty(name = "archlens.import.max-bytes", defaultValue = "5242880")
     long maxImportBytes;
@@ -57,6 +63,7 @@ public class AnalysisImportService {
 
     @Transactional
     public ImportResult importAnalysis(UUID assessmentId, String idempotencyKey, String rawJson) {
+        long started = System.currentTimeMillis();
         identityService.requireWrite();
         var org = organizationService.getOrganization();
         var actor = identityService.current().subject();
@@ -80,6 +87,8 @@ public class AnalysisImportService {
 
         List<String> errors = schemaValidator.validate(rawJson);
         if (!errors.isEmpty()) {
+            metrics.recordImportSchemaFailure();
+            LOG.warnf("Import schema inválido assessmentId=%s errorCount=%d", assessmentId, errors.size());
             throw new BusinessException("JSON de análise inválido: " + String.join("; ", errors));
         }
 
@@ -87,6 +96,8 @@ public class AnalysisImportService {
         try {
             doc = objectMapper.readValue(rawJson, AnalysisDocument.class);
         } catch (Exception e) {
+            metrics.recordImportSchemaFailure();
+            LOG.warnf("Falha ao interpretar analysis.json assessmentId=%s", assessmentId);
             throw new BusinessException("Falha ao interpretar analysis.json");
         }
 
@@ -127,6 +138,11 @@ public class AnalysisImportService {
 
         auditService.record(org.id, assessmentId, AuditAction.ANALYSIS_IMPORTED, actor,
                 "Importação concluída com " + persisted.size() + " achados; hash=" + doc.contentHash());
+
+        long elapsed = System.currentTimeMillis() - started;
+        metrics.recordImportSuccess(persisted.size(), elapsed);
+        LOG.infof("Importação OK assessmentId=%s findings=%d durationMs=%d hash=%s",
+                assessmentId, persisted.size(), elapsed, doc.contentHash());
 
         return new ImportResult(imp, persisted.size());
     }

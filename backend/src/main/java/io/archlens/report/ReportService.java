@@ -6,6 +6,7 @@ import io.archlens.application.port.NarrativeGenerator;
 import io.archlens.application.service.AuditService;
 import io.archlens.application.service.OrganizationService;
 import io.archlens.domain.AuditAction;
+import io.archlens.infrastructure.observability.ArchLensMetrics;
 import io.archlens.infrastructure.persistence.*;
 import io.archlens.infrastructure.security.IdentityService;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -39,12 +40,15 @@ public class ReportService {
     AuditService auditService;
     @Inject
     IdentityService identityService;
+    @Inject
+    ArchLensMetrics metrics;
 
     @ConfigProperty(name = "archlens.scores.disclaimer", defaultValue = "Scores apoiam decisão; não são precisão científica.")
     String scoresDisclaimer;
 
     @Transactional
     public ReportSnapshotEntity generate(UUID assessmentId) {
+        long started = System.currentTimeMillis();
         identityService.requireWrite();
         var org = organizationService.getOrganization();
         var actor = identityService.current().subject();
@@ -52,7 +56,14 @@ public class ReportService {
         if (assessment == null) throw new NotFoundException("Avaliação não encontrada");
 
         String html = buildHtml(org.id, assessment);
-        byte[] pdf = renderPdf(html);
+        byte[] pdf;
+        try {
+            pdf = renderPdf(html);
+        } catch (RuntimeException e) {
+            metrics.recordReportPdfFailure();
+            LOG.errorf(e, "Falha ao gerar PDF assessmentId=%s", assessmentId);
+            throw e;
+        }
         String hash = sha256(html);
 
         int nextVersion = ReportSnapshotEntity.listByOrgAndAssessment(org.id, assessmentId).stream()
@@ -73,6 +84,9 @@ public class ReportService {
         snap.persist();
 
         auditService.record(org.id, assessmentId, AuditAction.REPORT_GENERATED, actor, "Relatório v" + nextVersion);
+        metrics.recordReportSuccess(System.currentTimeMillis() - started);
+        LOG.infof("Relatório gerado assessmentId=%s version=%d durationMs=%d",
+                assessmentId, nextVersion, System.currentTimeMillis() - started);
         return snap;
     }
 

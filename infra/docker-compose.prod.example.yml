@@ -1,0 +1,43 @@
+# Overlay de EXEMPLO para produção — NÃO use secrets reais neste arquivo.
+# Copie para um arquivo local não versionado e injete secrets via env/secret store.
+#
+# Uso (exemplo):
+#   set ARCHLENS_DB_PASSWORD=...
+#   set ARCHLENS_OIDC_CLIENT_SECRET=...
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.example.yml up -d
+#
+# Este overlay NÃO é o perfil de demo. Produção exige OIDC, TLS e secrets reais.
+
+services:
+  backend:
+    environment:
+      QUARKUS_PROFILE: prod
+      ARCHLENS_PROFILE_LABEL: production
+      ARCHLENS_REQUIRE_HARDENED: "true"
+      ARCHLENS_LOCAL_HEADER_AUTH: "false"
+      ARCHLENS_OIDC_ENABLED: "true"
+      ARCHLENS_OIDC_TLS_TRUST_ALL: "false"
+      ARCHLENS_OIDC_URL: https://idp.example.com/realms/archlens
+      ARCHLENS_OIDC_ISSUER: https://idp.example.com/realms/archlens
+      ARCHLENS_OIDC_CLIENT_ID: archlens-api
+      ARCHLENS_OIDC_CLIENT_SECRET: ${ARCHLENS_OIDC_CLIENT_SECRET:?set-oidc-secret}
+      ARCHLENS_OIDC_AUDIENCE: archlens-api
+      ARCHLENS_DB_URL: jdbc:postgresql://postgres:5432/archlens
+      ARCHLENS_DB_USER: archlens
+      ARCHLENS_DB_PASSWORD: ${ARCHLENS_DB_PASSWORD:?set-db-password}
+      ARCHLENS_CORS_ORIGINS: https://app.example.com
+      ARCHLENS_HSTS_ENABLED: "true"
+      ARCHLENS_OPENAPI_ENABLED: "false"
+      ARCHLENS_LLM_ENABLED: "false"
+
+  frontend:
+    environment:
+      AUTH_LOCAL_ENABLED: "false"
+      AUTH_SECRET: ${AUTH_SECRET:?set-auth-secret}
+      NEXTAUTH_SECRET: ${AUTH_SECRET:?set-auth-secret}
+      AUTH_URL: https://app.example.com
+      NEXTAUTH_URL: https://app.example.com
+      KEYCLOAK_ISSUER: https://idp.example.com/realms/archlens
+      KEYCLOAK_CLIENT_ID: archlens-frontend
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:?set-frontend-secret}
+      NEXT_PUBLIC_API_BASE_URL: https://api.example.com/api/v1

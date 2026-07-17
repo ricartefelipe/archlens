@@ -95,3 +95,27 @@
 **Decisão:** Scores são determinísticos (base 50 ± findings ± questionário), clamp 0–100, com disclaimer em rationale/relatório. Não são precisão científica.
 
 **Motivo:** Transparência para stakeholders e alinhamento ao questionário versionado.
+
+## ADR-017: Perfis demo vs produção
+
+**Decisão:** Compose padrão usa `QUARKUS_PROFILE=demo` com header auth explícito. Perfil `%prod` exige OIDC, TLS verification, CORS restritivo, sem header auth, sem defaults de secret e falha no startup se inseguro (`SecurityConfigValidator`).
+
+**Motivo:** Conveniência local visível e separada de hardening real; evita “prod falso” no Compose.
+
+## ADR-018: Observabilidade mínima embutida
+
+**Decisão:** CorrelationId + MDC, métricas Micrometer/Prometheus (`archlens_*`), health live/ready com check de regras, logs JSON só em `%prod`. Tracing OTel fica opcional/planejado.
+
+**Motivo:** Operabilidade do MVP sem inventar stack Grafana/Kafka.
+
+## ADR-019: Rate limit in-memory na importação
+
+**Decisão:** Filtro JAX-RS limita POSTs de import por minuto por IP/usuário. Em produção multi-instância, documentar substituição por gateway.
+
+**Motivo:** Mitigar abuso de upload no MVP sem dependência externa.
+
+## ADR-020: Imagens e Compose com versões fixas + non-root
+
+**Decisão:** Tags pinadas (`postgres:16.6-alpine`, Keycloak `26.0.7`, Node/Temurin fixos), Dockerfiles multi-stage, usuário não-root, volumes nomeados, `down` sem `-v` nos scripts oficiais.
+
+**Motivo:** Reproducibilidade e menor superfície; preservar dados em reinícios.
