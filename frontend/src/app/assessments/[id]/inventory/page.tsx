@@ -19,7 +19,6 @@ export default async function InventoryPage({
     user: session.userName ?? undefined,
     roles: session.roles,
   };
-  const roles = session.roles;
   let error: string | null = null;
   let inventory = null;
 

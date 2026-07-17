@@ -13,7 +13,10 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  if (!req.auth && pathname !== "/") {
+  if (!req.auth) {
+    if (pathname === "/") {
+      return NextResponse.next();
+    }
     const loginUrl = new URL("/login", req.nextUrl.origin);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);

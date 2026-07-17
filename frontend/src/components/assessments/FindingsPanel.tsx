@@ -6,12 +6,14 @@ import { Badge } from "@/components/ui/Badge";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { LoadingState } from "@/components/ui/LoadingState";
 import {
-  exportFindingsCsv,
   listFindings,
   type AuthContext,
 } from "@/lib/api/assessments";
-import { updateFindingStatusAction } from "@/lib/actions/assessments";
-import { downloadBlob } from "@/lib/utils";
+import {
+  exportFindingsCsvAction,
+  updateFindingStatusAction,
+} from "@/lib/actions/assessments";
+import { downloadBase64 } from "@/lib/utils";
 import type { Finding, FindingSeverity, FindingStatus } from "@/types";
 
 const STATUSES: FindingStatus[] = [
@@ -89,8 +91,8 @@ export function FindingsPanel({
     setExporting(true);
     setError(null);
     try {
-      const blob = await exportFindingsCsv(assessmentId, auth);
-      downloadBlob(blob, `findings-${assessmentId}.csv`);
+      const result = await exportFindingsCsvAction(assessmentId);
+      downloadBase64(result.base64, result.filename, result.contentType);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao exportar CSV");
     } finally {
@@ -195,6 +197,12 @@ export function FindingsPanel({
                     <p className="font-medium text-slate-900">{finding.title}</p>
                     <p className="mt-1 text-xs text-slate-500">{finding.ruleId}</p>
                     <p className="mt-2 text-slate-600">{finding.description}</p>
+                    {finding.evidence ? (
+                      <p className="mt-2 text-xs text-slate-500">
+                        <span className="font-medium">Evidência:</span>{" "}
+                        {finding.evidence}
+                      </p>
+                    ) : null}
                   </td>
                   <td className="px-4 py-3">
                     <Badge label={finding.severity} />
