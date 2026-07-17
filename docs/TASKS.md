@@ -1,6 +1,27 @@
 # ArchLens — Tasks (estado persistente)
 
-Atualizado em 2026-07-16.
+Atualizado em 2026-07-17 (Prompt 1/5 — analyzer offline **concluído**).
+
+## Diagnóstico Prompt 1 (antes das alterações)
+
+- Projeto confirmado: reactor `analyzer/` (Java 21, módulos `core` + `cli`) + monorepo ArchLens.
+- Build/testes do reactor `analyzer` **passavam**, porém com implementação incompleta frente ao contrato de segurança:
+  - `MavenPomParser` / `GradleBuildParser`: regex frágil; `dependencyManagement` misturado com deps; sem XML seguro / XXE.
+  - `SafeFileWalker`: sem limites, sem bloqueio explícito de symlink externo, sem ignore de binários/`.vscode`.
+  - `SecretDetector`: `matcher.group()` alimentava evidência; hash SHA-256 direto do valor (correlacionável).
+  - Sinais MVP incompletos (PrimeFaces, Flyway, OAuth/OIDC, OpenAPI, health/metrics, RMI, etc.).
+  - CLI: códigos de saída não distinguiam entrada inválida vs falha de schema vs erro interno.
+  - Docs de contrato/limitações ausentes (`ANALYSIS_CONTRACT.md`, `LIMITATIONS.md`).
+
+## Plano Prompt 1 — executado
+
+1. [x] MavenPomParser XML seguro (XXE/DTD off) + testes
+2. [x] GradleBuildParser heurístico documentado + testes
+3. [x] SafeFileWalker com limites/symlink/binários + testes
+4. [x] SecretDetector / EvidenceFactory / indicador não correlacionável
+5. [x] SignalDetector + inventário MVP
+6. [x] Contrato schema + sync backend + determinismo + CLI exit codes
+7. [x] Docs + quality gate (testes, package, scan, validate, hash, anti-leak)
 
 ## 0. Fundação
 
@@ -10,12 +31,16 @@ Atualizado em 2026-07-16.
 - [x] `contracts/analysis.schema.json`
 - [x] Sample `legacy-java-demo`
 
-## 1. Analyzer
+## 1. Analyzer (Prompt 1)
 
-- [x] Core: walk seguro, ignores, detecção de stack/sinais
-- [x] CLI: `scan`, `validate`, `version`
-- [x] JSON determinístico + SHA-256
-- [x] Testes: fixture, schema, determinismo
+- [x] Core: walk seguro, ignores, limites, parsers Maven/Gradle seguros
+- [x] Proteção de segredos (sem valor, sem hash correlacionável simples)
+- [x] Sinais/inventário MVP + evidências sem fonte
+- [x] CLI: `scan`, `validate`, `version` com exit codes distintos
+- [x] JSON determinístico + contentHash canônico
+- [x] Schema sync contracts ↔ backend
+- [x] Docs: `ANALYSIS_CONTRACT.md`, `LIMITATIONS.md`
+- [x] Quality gate Prompt 1 (35 testes; scan demo validado)
 
 ## 2. Backend
 
@@ -30,6 +55,7 @@ Atualizado em 2026-07-16.
 - [x] OIDC configurável + papéis via headers em local
 - [x] NarrativeGenerator (template default)
 - [x] Testes API (`ArchLensApiIT` + `RuleEngineTest`) — 10/10
+- [ ] Prompt 2+: alinhar materialização a novos campos `detector`/`confidence`/`durationMs` se UI exigir
 
 ## 3. Frontend
 
@@ -47,8 +73,9 @@ Atualizado em 2026-07-16.
 - [ ] E2E Playwright completo (smoke local; Compose não validado neste host — Docker daemon indisponível)
 - [x] Quality gates principais validados via Maven/npm/CLI
 
-## Pendências conhecidas
+## Pendências para o próximo prompt
 
-- `docker compose up --build` não executado aqui: Docker daemon inacessível (`docker.sock`).
-- Playwright E2E end-to-end contra stack completa pendente de ambiente com Docker.
-- OIDC “duro” no compose local está desligado (`ARCHLENS_OIDC_ENABLED=false`); Keycloak sobe para evolução/login UI opcional.
+- Import backend/UI consumindo `detector`/`confidence`/`durationMs` de forma explícita (hoje ignora campos extras com `@JsonIgnoreProperties`).
+- Cobertura E2E Compose + Playwright.
+- Evolução de regras/roadmap a partir dos novos sinais (OAuth/OIDC, Flyway, etc.).
+- Refinar inventário de descritores WAS/JBoss com fixtures dedicadas além do sample atual.

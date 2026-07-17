@@ -16,6 +16,10 @@ public final class WorkspacePaths {
         return findRelative("contracts/analysis.schema.json");
     }
 
+    public static Path workspaceRoot() {
+        return analysisSchema().getParent().getParent();
+    }
+
     private static Path findRelative(String relative) {
         Path current = Path.of("").toAbsolutePath();
         while (current != null) {

@@ -62,4 +62,18 @@ class ProjectAnalyzerTest {
         assertEquals(firstHash, secondHash);
         assertEquals(first.contentHash(), second.contentHash());
     }
+
+    @Test
+    void doesNotLeakFictionalSecretOrFullSource() throws Exception {
+        AnalysisDocument document = ProjectAnalyzer.analyze(sampleRoot());
+        String json = AnalysisJson.writePretty(document);
+        assertFalse(json.contains("demo-not-a-real-secret-123"));
+        assertFalse(json.contains("package com.demo"));
+        assertFalse(json.contains("private static final String password"));
+        assertNotNull(document.durationMs());
+        assertTrue(document.durationMs() >= 0);
+        assertFalse(document.secrets().isEmpty());
+        assertFalse(document.evidences().isEmpty());
+        assertEquals("8", document.project().javaVersionHint());
+    }
 }

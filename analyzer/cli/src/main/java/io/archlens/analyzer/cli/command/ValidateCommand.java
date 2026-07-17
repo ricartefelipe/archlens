@@ -1,5 +1,6 @@
 package io.archlens.analyzer.cli.command;
 
+import io.archlens.analyzer.core.cli.ExitCodes;
 import io.archlens.analyzer.core.schema.SchemaValidator;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -20,25 +21,25 @@ public final class ValidateCommand implements Callable<Integer> {
     @Override
     public Integer call() {
         try {
-            if (!Files.isRegularFile(file)) {
-                System.err.println("File not found: " + file);
-                return 1;
+            if (file == null || !Files.isRegularFile(file)) {
+                System.err.println("Entrada inválida: arquivo de análise não encontrado");
+                return ExitCodes.INVALID_INPUT;
             }
             Path schemaPath = resolveSchema();
             if (!Files.isRegularFile(schemaPath)) {
-                System.err.println("Schema not found: " + schemaPath);
-                return 1;
+                System.err.println("Entrada inválida: schema não encontrado");
+                return ExitCodes.INVALID_INPUT;
             }
             SchemaValidator.ValidationResult result = SchemaValidator.validate(schemaPath, file);
             if (result.success()) {
                 System.out.println("Valid: " + file.toAbsolutePath().normalize());
-                return 0;
+                return ExitCodes.SUCCESS;
             }
-            System.err.println("Validation failed: " + result.message());
-            return 1;
+            System.err.println("Validação falhou: JSON incompatível com o schema");
+            return ExitCodes.VALIDATION_FAILED;
         } catch (Exception e) {
-            System.err.println("Validation error: " + e.getMessage());
-            return 1;
+            System.err.println("Erro interno na validação");
+            return ExitCodes.INTERNAL_ERROR;
         }
     }
 

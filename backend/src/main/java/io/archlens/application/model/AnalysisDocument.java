@@ -9,6 +9,7 @@ public record AnalysisDocument(
         String schemaVersion,
         String analyzerVersion,
         String generatedAt,
+        Long durationMs,
         String contentHash,
         Project project,
         Inventory inventory,
@@ -44,7 +45,8 @@ public record AnalysisDocument(
     public record Dependency(String coordinates, String scope, String sourcePath) {}
     public record Hotspot(String path, int lineCount, String reason, String evidenceId) {}
     public record Cycle(List<String> packages, List<String> evidenceIds) {}
-    public record Secret(String type, String path, int line, String valueHash) {}
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Secret(String type, String path, int line, String detector, String confidence, String valueHash) {}
     public record Evidence(String id, String path, String kind, String locator, String snippetHash) {}
     public record Metrics(int fileCount, int javaFileCount, int lineCount, int typeCount, int testFileCount, int dependencyCount) {}
 }

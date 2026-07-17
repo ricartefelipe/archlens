@@ -27,11 +27,11 @@ docker compose up --build
 ### Analisar o sample
 
 ```bash
-cd analyzer && ./mvnw -pl cli -am package -DskipTests
-java -jar cli/target/archlens-cli-*.jar scan \
+cd analyzer && ./mvnw -pl cli -am package
+java -jar cli/target/archlens-analyzer-cli-*.jar scan \
   --path ../samples/legacy-java-demo \
   --out /tmp/analysis.json
-java -jar cli/target/archlens-cli-*.jar validate --file /tmp/analysis.json
+java -jar cli/target/archlens-analyzer-cli-*.jar validate --file /tmp/analysis.json
 ```
 
 Depois: login → criar avaliação → importar `/tmp/analysis.json` → questionário → revisar achados → roadmap → publicar relatório.

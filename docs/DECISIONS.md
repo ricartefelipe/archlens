@@ -47,3 +47,21 @@
 **Decisão:** Commits limpos; sem trailers de co-autoria de ferramentas.
 
 **Motivo:** Política do time / CI.
+
+## ADR-009: Parser Maven XML endurecido (XXE)
+
+**Decisão:** `MavenPomParser` usa DOM com DTD desabilitada, entidades externas off e sem resolução de rede.
+
+**Motivo:** POMs não confiáveis não podem ler o filesystem do operador via XXE.
+
+## ADR-010: Gradle apenas heurístico
+
+**Decisão:** `GradleBuildParser` não avalia Groovy/Kotlin nem executa Gradle; version catalogs ficam não resolvidos.
+
+**Motivo:** Segurança e previsibilidade offline; limitações documentadas em `LIMITATIONS.md`.
+
+## ADR-011: Indicador de segredo contextual
+
+**Decisão:** `valueHash` de segredos é `SHA-256(domínio + tipo + path + linha + valor)`, nunca hash nu do valor; evidências não guardam match bruto.
+
+**Motivo:** Evitar correlação indevida do mesmo segredo entre análises/caminhos e vazamento em JSON/logs.
