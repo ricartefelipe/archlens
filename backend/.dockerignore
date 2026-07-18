@@ -1,10 +1,14 @@
-target/
-.idea/
+# Usado se o contexto de build for backend/ diretamente
+target
+target/**
+.idea
 *.iml
 .classpath
 .project
-.settings/
-.git/
+.settings
+.settings/**
+.git
+.git/**
 *.log
 .env
 .env.*

@@ -24,11 +24,18 @@ Valor: transformar um sistema pouco conhecido em diagnóstico rastreável e plan
 
 ### Linux / macOS
 
+Se o contexto Docker ativo for Desktop (`desktop-linux`) e a stack já estiver
+no Engine do sistema, use o sock explícito para evitar conflito de portas
+(3000/8080/8081/5432):
+
 ```bash
-docker compose up --build -d
+export DOCKER_HOST=unix:///var/run/docker.sock
+docker compose -f infra/docker-compose.yml up --build -d
 # ready:
 curl -fsS http://localhost:8080/q/health/ready
 ```
+
+Detalhes e limpeza de órfãos do Desktop: [RUNBOOK](docs/RUNBOOK.md).
 
 | Serviço | URL |
 |---------|-----|
