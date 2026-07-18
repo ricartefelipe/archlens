@@ -24,19 +24,34 @@ docker compose -f infra\docker-compose.yml down
 
 **Não** use `-v` a menos que queira apagar o volume `pgdata` (ex.: `infra_pgdata`).
 
-Se o Docker Desktop estiver inativo no Linux/WSL:
+## Linux/macOS — subir stack
+
+Neste ambiente a stack demo costuma rodar no Docker Engine do sistema
+(`unix:///var/run/docker.sock`). Se o contexto ativo for **Docker Desktop**
+(`desktop-linux`), um `docker compose up` tenta outro daemon e falha com
+`bind: address already in use` nas portas 3000/8080/8081/5432.
+
+Comando recomendado (força o sock do sistema):
 
 ```bash
 export DOCKER_HOST=unix:///var/run/docker.sock
-```
-
-## Linux/macOS — subir stack
-
-```bash
 docker compose -f infra/docker-compose.yml up --build -d
-# ou na raiz:
+# ou na raiz (include → infra/):
 docker compose up --build -d
 ```
+
+Alternativa: `docker context use default` (endpoint `unix:///var/run/docker.sock`).
+
+Para limpar containers órfãos criados pelo Desktop **sem** apagar volumes:
+
+```bash
+# no contexto Desktop (sem DOCKER_HOST), projeto típico "archlens":
+docker compose -p archlens down
+# NÃO use -v
+```
+
+Contexto de build: frontend usa `frontend/` + `frontend/.dockerignore`
+(exclui `node_modules`/`.next`); backend usa a raiz + `.dockerignore` na raiz.
 
 | Serviço | URL |
 |---------|-----|
@@ -107,6 +122,8 @@ docker compose -f infra/docker-compose.yml up -d --build --force-recreate
 |---------|------|
 | Backend unhealthy | `docker compose -f infra/docker-compose.yml logs backend`; Postgres ready? |
 | Startup falha em prod | Ver mensagem do `SecurityConfigValidator` (OIDC/secrets/CORS) |
+| `ports are not available` / `8081: bind: address already in use` | Quase sempre a stack já está no sock do sistema enquanto o CLI usa Desktop. Use `DOCKER_HOST=unix:///var/run/docker.sock` e `docker compose -f infra/docker-compose.yml ps`. Não mate outros projetos. |
+| Build frontend transfere ~1GB | Falta `.dockerignore` no contexto (`frontend/.dockerignore` deve excluir `node_modules` e `.next`). Confirme que está na cópia certa do repo. |
 | Login falha | Realm importado? Porta 8081 livre? `AUTH_LOCAL_ENABLED=true` no demo? |
 | Login E2E falha com `127.0.0.1` | Use `http://localhost:3000` (cookies/`NEXTAUTH_URL`) |
 | UI `fetch failed` / lista vazia no Compose | Confirme `ARCHLENS_API_INTERNAL_URL=http://backend:8080/api/v1` no serviço frontend |
