@@ -31,13 +31,23 @@ Neste ambiente a stack demo costuma rodar no Docker Engine do sistema
 (`desktop-linux`), um `docker compose up` tenta outro daemon e falha com
 `bind: address already in use` nas portas 3000/8080/8081/5432.
 
-Comando recomendado (força o sock do sistema):
+**Comando recomendado** (detecta Desktop inativo / stack já no sistema):
+
+```bash
+./scripts/stack-up.sh
+# parar sem apagar volumes:
+./scripts/stack-down.sh
+```
+
+O script define `DOCKER_HOST=unix:///var/run/docker.sock` quando o sock do Desktop
+não responde, quando a stack `infra-*`/`archlens-*` já está no Engine do sistema,
+ou quando o contexto ativo é `desktop-linux` (evita segunda cópia na 8081).
+
+Equivalente manual:
 
 ```bash
 export DOCKER_HOST=unix:///var/run/docker.sock
 docker compose -f infra/docker-compose.yml up --build -d
-# ou na raiz (include → infra/):
-docker compose up --build -d
 ```
 
 Alternativa: `docker context use default` (endpoint `unix:///var/run/docker.sock`).
@@ -76,7 +86,7 @@ Client secrets de demo: `archlens-frontend-secret`, `archlens-api-secret` — **
 
 ## Procedimento de demo (curto)
 
-1. Subir stack (`stack-up` / `docker compose up --build -d`).
+1. Subir stack (`./scripts/stack-up.sh` / `.\scripts\stack-up.ps1`).
 2. Confirmar ready: `curl http://localhost:8080/q/health/ready`.
 3. Login em http://localhost:3000 com `architect` / `architect123`.
 4. Gerar analysis.json (abaixo) e importar na UI.
@@ -122,7 +132,7 @@ docker compose -f infra/docker-compose.yml up -d --build --force-recreate
 |---------|------|
 | Backend unhealthy | `docker compose -f infra/docker-compose.yml logs backend`; Postgres ready? |
 | Startup falha em prod | Ver mensagem do `SecurityConfigValidator` (OIDC/secrets/CORS) |
-| `ports are not available` / `8081: bind: address already in use` | Quase sempre a stack já está no sock do sistema enquanto o CLI usa Desktop. Use `DOCKER_HOST=unix:///var/run/docker.sock` e `docker compose -f infra/docker-compose.yml ps`. Não mate outros projetos. |
+| `ports are not available` / `8081: bind: address already in use` | Quase sempre a stack já está no sock do sistema enquanto o CLI usa Desktop. Use `./scripts/stack-up.sh` (ou `DOCKER_HOST=unix:///var/run/docker.sock`) e `docker compose -f infra/docker-compose.yml ps`. Se houver órfãos no Desktop: `docker compose -p archlens down` (sem `-v`). Não mate outros projetos. |
 | Build frontend transfere ~1GB | Falta `.dockerignore` no contexto (`frontend/.dockerignore` deve excluir `node_modules` e `.next`). Confirme que está na cópia certa do repo. |
 | Login falha | Realm importado? Porta 8081 livre? `AUTH_LOCAL_ENABLED=true` no demo? |
 | Login E2E falha com `127.0.0.1` | Use `http://localhost:3000` (cookies/`NEXTAUTH_URL`) |
