@@ -97,24 +97,6 @@ export default async function LoginPage({
             </p>
           )}
 
-          {local ? (
-            <details className="text-sm text-slate-600">
-              <summary className="cursor-pointer font-medium">
-                Credenciais locais (dev)
-              </summary>
-              <ul className="mt-2 space-y-1 pl-4">
-                <li>
-                  <strong>admin</strong> / admin123 — ADMIN
-                </li>
-                <li>
-                  <strong>architect</strong> / architect123 — ARCHITECT
-                </li>
-                <li>
-                  <strong>viewer</strong> / viewer123 — VIEWER
-                </li>
-              </ul>
-            </details>
-          ) : null}
         </CardBody>
       </Card>
     </div>
