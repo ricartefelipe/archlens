@@ -69,35 +69,6 @@ const providers = [
                 roles: user.roles,
               };
             }
-
-            const trBase = (
-              process.env.TOTALRECALL_URL ?? "http://54.94.163.136:9087"
-            ).replace(/\/$/, "");
-            try {
-              const response = await fetch(`${trBase}/api/v1/login`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  email: username,
-                  password,
-                  system: "archlens",
-                }),
-              });
-              const data = (await response.json()) as {
-                valid?: boolean;
-                profile?: { id: string; name: string; email: string };
-              };
-              if (data.valid && data.profile) {
-                return {
-                  id: data.profile.id,
-                  name: data.profile.name,
-                  email: data.profile.email,
-                  roles: ["ADMIN", "ARCHITECT", "VIEWER"] as UserRole[],
-                };
-              }
-            } catch {
-              return null;
-            }
             return null;
           },
         }),
