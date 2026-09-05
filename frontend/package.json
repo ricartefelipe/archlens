@@ -12,7 +12,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "mermaid": "^11.16.0",
+    "mermaid": "^11.16.1",
     "next": "15.5.20",
     "next-auth": "^5.0.0-beta.31",
     "react": "19.1.0",
