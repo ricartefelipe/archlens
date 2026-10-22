@@ -2,49 +2,50 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Keycloak from "next-auth/providers/keycloak";
 import { extractRolesFromProfile } from "@/lib/auth/roles";
+import {
+  isLocalAuthAllowed,
+  readEnv,
+  resolveLocalPassword,
+} from "@/lib/auth/localCredentials";
 import type { UserRole } from "@/types";
 
-const keycloakConfigured =
-  Boolean(process.env.KEYCLOAK_CLIENT_ID) &&
-  Boolean(process.env.KEYCLOAK_ISSUER);
-
-/** Login local somente quando explicitamente habilitado (dev/teste). */
-const localAuthEnabled = process.env.AUTH_LOCAL_ENABLED === "true";
+function keycloakConfiguredNow(): boolean {
+  return Boolean(readEnv("KEYCLOAK_CLIENT_ID") && readEnv("KEYCLOAK_ISSUER"));
+}
 
 function loadLocalUsers(): Record<
   string,
   { password: string; roles: UserRole[]; name: string }
 > {
-  if (!localAuthEnabled) {
+  if (!isLocalAuthAllowed()) {
     return {};
   }
-  // Credenciais apenas em runtime server-side; nunca embutidas no client bundle.
-  return {
-    admin: {
-      password: process.env.AUTH_LOCAL_ADMIN_PASSWORD ?? "admin123",
-      roles: ["ADMIN", "ARCHITECT", "VIEWER"],
-      name: "Ada Admin",
-    },
-    architect: {
-      password: process.env.AUTH_LOCAL_ARCHITECT_PASSWORD ?? "architect123",
-      roles: ["ARCHITECT", "VIEWER"],
-      name: "Alex Architect",
-    },
-    viewer: {
-      password: process.env.AUTH_LOCAL_VIEWER_PASSWORD ?? "viewer123",
-      roles: ["VIEWER"],
-      name: "Vera Viewer",
-    },
-  };
+  const entries: Array<[string, UserRole[], string, string | undefined]> = [
+    ["admin", ["ADMIN", "ARCHITECT", "VIEWER"], "Ada Admin", readEnv("AUTH_LOCAL_ADMIN_PASSWORD")],
+    ["architect", ["ARCHITECT", "VIEWER"], "Alex Architect", readEnv("AUTH_LOCAL_ARCHITECT_PASSWORD")],
+    ["viewer", ["VIEWER"], "Vera Viewer", readEnv("AUTH_LOCAL_VIEWER_PASSWORD")],
+  ];
+  const users: Record<string, { password: string; roles: UserRole[]; name: string }> = {};
+  for (const [username, roles, name, configured] of entries) {
+    const password = resolveLocalPassword(configured);
+    if (!password) {
+      continue;
+    }
+    users[username] = { password, roles, name };
+  }
+  return users;
 }
+
+const keycloakConfigured = keycloakConfiguredNow();
+const localAuthEnabled = isLocalAuthAllowed();
 
 const providers = [
   ...(keycloakConfigured
     ? [
         Keycloak({
-          clientId: process.env.KEYCLOAK_CLIENT_ID!,
-          clientSecret: process.env.KEYCLOAK_CLIENT_SECRET ?? "",
-          issuer: process.env.KEYCLOAK_ISSUER!,
+          clientId: readEnv("KEYCLOAK_CLIENT_ID") ?? "",
+          clientSecret: readEnv("KEYCLOAK_CLIENT_SECRET") ?? "",
+          issuer: readEnv("KEYCLOAK_ISSUER") ?? "",
         }),
       ]
     : []),
@@ -61,15 +62,15 @@ const providers = [
             const username = String(credentials?.username ?? "");
             const password = String(credentials?.password ?? "");
             const user = loadLocalUsers()[username];
-            if (user && user.password === password) {
-              return {
-                id: username,
-                name: user.name,
-                email: `${username}@archlens.local`,
-                roles: user.roles,
-              };
+            if (!user || user.password !== password) {
+              return null;
             }
-            return null;
+            return {
+              id: username,
+              name: user.name,
+              email: `${username}@archlens.local`,
+              roles: user.roles,
+            };
           },
         }),
       ]
@@ -77,7 +78,7 @@ const providers = [
 ];
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+  secret: readEnv("AUTH_SECRET") ?? readEnv("NEXTAUTH_SECRET"),
   providers,
   pages: {
     signIn: "/login",
@@ -114,9 +115,9 @@ export function isAuthConfigured(): boolean {
 }
 
 export function isKeycloakConfigured(): boolean {
-  return keycloakConfigured;
+  return keycloakConfiguredNow();
 }
 
 export function isLocalAuthEnabled(): boolean {
-  return localAuthEnabled;
+  return isLocalAuthAllowed();
 }

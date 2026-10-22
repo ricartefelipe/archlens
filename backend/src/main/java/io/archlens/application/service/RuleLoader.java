@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.archlens.application.model.RuleDefinition;
 import io.archlens.domain.DimensionKey;
+import io.archlens.domain.FindingCertainty;
 import io.archlens.domain.FindingSeverity;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -16,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @ApplicationScoped
@@ -89,7 +91,18 @@ public class RuleLoader {
                 FindingSeverity.valueOf((String) map.get("severity")),
                 DimensionKey.valueOf((String) map.get("dimension")),
                 map.get("enabled") == null || Boolean.TRUE.equals(map.get("enabled")),
+                certainty(map.get("certainty"), type),
                 new RuleDefinition.RuleCondition(type, params)
         );
+    }
+
+    private static FindingCertainty certainty(Object explicit, String conditionType) {
+        if (explicit != null && !explicit.toString().isBlank()) {
+            return FindingCertainty.valueOf(explicit.toString().trim().toUpperCase(Locale.ROOT));
+        }
+        return switch (conditionType) {
+            case "framework_present", "cycle_present" -> FindingCertainty.STRUCTURAL;
+            default -> FindingCertainty.HEURISTIC;
+        };
     }
 }

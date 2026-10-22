@@ -1,6 +1,7 @@
 package io.archlens.analyzer.core.walk;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
@@ -61,7 +62,7 @@ class SafeFileWalkerTest {
         Files.write(tempDir.resolve("blob.bin"), new byte[]{0, 1, 2, 3});
         Files.write(tempDir.resolve("big.txt"), new byte[3_000_000]);
 
-        WalkLimits limits = new WalkLimits(1_000_000L, 100, 10_000_000L, Set.of());
+        WalkLimits limits = new WalkLimits(1_000_000L, 100, 10_000_000L, Set.of(), Set.of());
         SafeFileWalker.WalkResult result = SafeFileWalker.walk(tempDir, path -> true, limits);
         List<String> relatives = result.files().stream().map(p -> SafeFileWalker.toRelative(tempDir, p)).toList();
         assertEquals(List.of("small.java"), relatives);
@@ -99,6 +100,53 @@ class SafeFileWalkerTest {
                     || d.toLowerCase().contains("permissão")));
         } finally {
             Files.setPosixFilePermissions(denied, EnumSet.allOf(PosixFilePermission.class));
+        }
+    }
+
+    @Test
+    @Timeout(5)
+    void symlinkCycleDoesNotRecurse() throws Exception {
+        Files.writeString(tempDir.resolve("visible.txt"), "ok");
+        Files.createSymbolicLink(tempDir.resolve("loop"), tempDir);
+
+        SafeFileWalker.WalkResult result = SafeFileWalker.walk(tempDir, path -> true, WalkLimits.DEFAULT);
+        List<String> relatives = result.files().stream().map(p -> SafeFileWalker.toRelative(tempDir, p)).toList();
+        assertTrue(relatives.contains("visible.txt"));
+        assertTrue(result.diagnostics().stream().anyMatch(d -> d.toLowerCase().contains("já visitado")));
+    }
+
+    @Test
+    void excludeSkipsRelativePathAndDirectoryName() throws Exception {
+        Files.createDirectories(tempDir.resolve("keep"));
+        Files.createDirectories(tempDir.resolve("secret-dir"));
+        Files.writeString(tempDir.resolve("keep/App.java"), "class App {}");
+        Files.writeString(tempDir.resolve("secret-dir/Hidden.java"), "class Hidden {}");
+        Files.writeString(tempDir.resolve("skip-me.txt"), "nope");
+
+        WalkLimits limits = WalkLimits.DEFAULT.withExclusions(Set.of("secret-dir", "skip-me.txt"));
+        SafeFileWalker.WalkResult result = SafeFileWalker.walk(tempDir, path -> true, limits);
+        List<String> relatives = result.files().stream().map(p -> SafeFileWalker.toRelative(tempDir, p)).toList();
+        assertEquals(List.of("keep/App.java"), relatives);
+        assertTrue(result.diagnostics().stream().anyMatch(d -> d.contains("excluído")));
+    }
+
+    @Test
+    @DisabledOnOs(OS.WINDOWS)
+    void unreadableFileIsReported() throws Exception {
+        Path locked = tempDir.resolve("locked.txt");
+        Files.writeString(locked, "conteudo");
+        Files.writeString(tempDir.resolve("open.txt"), "ok");
+        try {
+            Files.setPosixFilePermissions(locked, EnumSet.noneOf(PosixFilePermission.class));
+            SafeFileWalker.WalkResult result = SafeFileWalker.walk(tempDir, path -> true, WalkLimits.DEFAULT);
+            List<String> relatives = result.files().stream().map(p -> SafeFileWalker.toRelative(tempDir, p)).toList();
+            assertTrue(relatives.contains("open.txt"));
+            assertFalse(relatives.contains("locked.txt"));
+            assertTrue(result.diagnostics().stream().anyMatch(d -> d.toLowerCase().contains("leitura")
+                    || d.toLowerCase().contains("inacess")
+                    || d.toLowerCase().contains("permissão")));
+        } finally {
+            Files.setPosixFilePermissions(locked, EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
         }
     }
 

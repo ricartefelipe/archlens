@@ -19,6 +19,8 @@ public class ArchLensMetrics {
     private Counter findingsGenerated;
     private Counter reportGenerated;
     private Counter reportPdfFailure;
+    private Counter reportIntegrityFailure;
+    private Counter importIntegrityFailure;
     private Counter oidcFailure;
     private Counter dbFailure;
     private Timer importDuration;
@@ -31,6 +33,8 @@ public class ArchLensMetrics {
         findingsGenerated = registry.counter("archlens_findings_generated_total");
         reportGenerated = registry.counter("archlens_report_generated_total");
         reportPdfFailure = registry.counter("archlens_report_pdf_failure_total");
+        reportIntegrityFailure = registry.counter("archlens_report_integrity_failure_total");
+        importIntegrityFailure = registry.counter("archlens_import_integrity_failure_total");
         oidcFailure = registry.counter("archlens_oidc_failure_total");
         dbFailure = registry.counter("archlens_db_failure_total");
         importDuration = registry.timer("archlens_import_duration_seconds");
@@ -54,6 +58,14 @@ public class ArchLensMetrics {
 
     public void recordReportPdfFailure() {
         reportPdfFailure.increment();
+    }
+
+    public void recordReportIntegrityFailure() {
+        reportIntegrityFailure.increment();
+    }
+
+    public void recordImportIntegrityFailure() {
+        importIntegrityFailure.increment();
     }
 
     public void recordOidcFailure() {

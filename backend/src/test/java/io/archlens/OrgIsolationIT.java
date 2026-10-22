@@ -20,8 +20,10 @@ import java.util.UUID;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.greaterThan;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
 @QuarkusTestResource(PostgresTestResource.class)
@@ -198,5 +200,58 @@ class OrgIsolationIT {
         .then()
                 .statusCode(200)
                 .body(containsString("Relatório ArchLens"));
+    }
+
+    @Test
+    @Order(5)
+    void erasureIsOrgScopedAndRemovesAnalysisPayload() {
+        given()
+                .header("X-User", "b")
+                .header("X-Roles", "ADMIN")
+                .header("X-Organization-Id", orgB.toString())
+        .when()
+                .delete("/api/v1/assessments/" + assessmentA)
+        .then()
+                .statusCode(404);
+
+        given()
+                .header("X-User", "a")
+                .header("X-Roles", "ARCHITECT")
+                .header("X-Organization-Id", orgA.toString())
+        .when()
+                .delete("/api/v1/assessments/" + assessmentA)
+        .then()
+                .statusCode(403);
+
+        given()
+                .header("X-User", "a")
+                .header("X-Roles", "ADMIN")
+                .header("X-Organization-Id", orgA.toString())
+        .when()
+                .delete("/api/v1/assessments/" + assessmentA)
+        .then()
+                .statusCode(204);
+
+        given()
+                .header("X-User", "a")
+                .header("X-Roles", "VIEWER")
+                .header("X-Organization-Id", orgA.toString())
+        .when()
+                .get("/api/v1/assessments/" + assessmentA)
+        .then()
+                .statusCode(404);
+
+        String audit = given()
+                .header("X-User", "a")
+                .header("X-Roles", "VIEWER")
+                .header("X-Organization-Id", orgA.toString())
+        .when()
+                .get("/api/v1/audit")
+        .then()
+                .statusCode(200)
+                .extract().asString();
+        assertTrue(audit.contains("ASSESSMENT_ERASED"));
+        assertFalse(audit.contains("javax.servlet"));
+        assertFalse(audit.contains("demo-not-a-real-secret"));
     }
 }

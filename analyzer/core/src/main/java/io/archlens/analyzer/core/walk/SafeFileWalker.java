@@ -52,6 +52,7 @@ public final class SafeFileWalker {
         long totalBytes = 0;
         Set<String> ignored = new HashSet<>(IGNORED_DIR_NAMES);
         ignored.addAll(limits.extraIgnoredDirNames());
+        Set<Path> visitedRealDirs = new HashSet<>();
 
         totalBytes = walkRecursive(
                 normalizedRoot,
@@ -61,7 +62,8 @@ public final class SafeFileWalker {
                 ignored,
                 files,
                 diagnostics,
-                totalBytes
+                totalBytes,
+                visitedRealDirs
         );
 
         files.sort(Comparator.comparing(path -> toRelative(normalizedRoot, path)));
@@ -76,8 +78,21 @@ public final class SafeFileWalker {
             Set<String> ignoredDirs,
             List<Path> files,
             List<String> diagnostics,
-            long totalBytes
+            long totalBytes,
+            Set<Path> visitedRealDirs
     ) {
+        Path realDir;
+        try {
+            realDir = current.toRealPath();
+        } catch (IOException ex) {
+            diagnostics.add("Permissão negada ou inacessível: " + safeRelative(root, current));
+            return totalBytes;
+        }
+        if (!visitedRealDirs.add(realDir)) {
+            diagnostics.add("Diretório já visitado ignorado: " + safeRelative(root, current));
+            return totalBytes;
+        }
+
         if (limits.maxFileCount() > 0 && files.size() >= limits.maxFileCount()) {
             diagnostics.add("Limite de quantidade de arquivos atingido");
             return totalBytes;
@@ -116,12 +131,25 @@ public final class SafeFileWalker {
                         diagnostics.add("Symlink externo ignorado: " + toRelative(root, child));
                         continue;
                     }
+                    if (isExcluded(root, child, limits)) {
+                        diagnostics.add("Caminho excluído: " + toRelative(root, child));
+                        continue;
+                    }
                     if (Files.isDirectory(target)) {
                         if (isIgnoredDirName(target.getFileName().toString())
                                 || isUnderIgnoredDir(root, child, ignoredDirs)) {
                             continue;
                         }
-                        totalBytes = walkRecursive(root, target, fileFilter, limits, ignoredDirs, files, diagnostics, totalBytes);
+                        try {
+                            if (visitedRealDirs.contains(target.toRealPath())) {
+                                diagnostics.add("Diretório já visitado ignorado: " + toRelative(root, child));
+                                continue;
+                            }
+                        } catch (IOException ex) {
+                            diagnostics.add("Symlink quebrado ignorado: " + toRelative(root, child));
+                            continue;
+                        }
+                        totalBytes = walkRecursive(root, target, fileFilter, limits, ignoredDirs, files, diagnostics, totalBytes, visitedRealDirs);
                     } else if (Files.isRegularFile(target)) {
                         totalBytes = maybeAddFile(root, child, target, attrs, fileFilter, limits, files, diagnostics, totalBytes);
                     }
@@ -130,10 +158,13 @@ public final class SafeFileWalker {
 
                 if (attrs.isDirectory()) {
                     String name = child.getFileName().toString();
-                    if (ignoredDirs.contains(name)) {
+                    if (ignoredDirs.contains(name) || isExcluded(root, child, limits)) {
+                        if (isExcluded(root, child, limits)) {
+                            diagnostics.add("Caminho excluído: " + toRelative(root, child));
+                        }
                         continue;
                     }
-                    totalBytes = walkRecursive(root, child, fileFilter, limits, ignoredDirs, files, diagnostics, totalBytes);
+                    totalBytes = walkRecursive(root, child, fileFilter, limits, ignoredDirs, files, diagnostics, totalBytes, visitedRealDirs);
                     continue;
                 }
 
@@ -168,6 +199,10 @@ public final class SafeFileWalker {
         if (isBinary(pathForRelative)) {
             return totalBytes;
         }
+        if (isExcluded(root, pathForRelative, limits)) {
+            diagnostics.add("Caminho excluído: " + toRelative(root, pathForRelative));
+            return totalBytes;
+        }
         long size = attrs.size();
         if (limits.maxFileBytes() > 0 && size > limits.maxFileBytes()) {
             diagnostics.add("Arquivo grande ignorado: " + toRelative(root, pathForRelative));
@@ -180,11 +215,50 @@ public final class SafeFileWalker {
         if (!fileFilter.test(pathForRelative)) {
             return totalBytes;
         }
-        if (looksBinaryByContent(readablePath, size)) {
+        if (looksBinaryByContent(readablePath, size, root, pathForRelative, diagnostics)) {
             return totalBytes;
         }
         files.add(pathForRelative.toAbsolutePath().normalize());
         return totalBytes + size;
+    }
+
+    static boolean isExcluded(Path root, Path candidate, WalkLimits limits) {
+        if (limits.excludedRelativePrefixes().isEmpty()) {
+            return false;
+        }
+        String relative = toRelative(root, candidate);
+        for (String raw : limits.excludedRelativePrefixes()) {
+            if (raw == null || raw.isBlank()) {
+                continue;
+            }
+            String prefix = raw.replace('\\', '/').replaceAll("^\\./", "").replaceAll("^/+", "");
+            if (prefix.isEmpty() || prefix.contains("..")) {
+                continue;
+            }
+            while (prefix.endsWith("/")) {
+                prefix = prefix.substring(0, prefix.length() - 1);
+            }
+            if (relative.equals(prefix) || relative.startsWith(prefix + "/")) {
+                return true;
+            }
+            if (!prefix.contains("/")) {
+                for (String segment : relative.split("/")) {
+                    if (segment.equals(prefix)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private static String safeRelative(Path root, Path file) {
+        try {
+            String relative = toRelative(root, file);
+            return relative.isEmpty() ? "." : relative;
+        } catch (IllegalArgumentException ex) {
+            return "(fora da raiz)";
+        }
     }
 
     public static boolean isWithinRoot(Path root, Path candidate) {
@@ -231,7 +305,13 @@ public final class SafeFileWalker {
         return relative;
     }
 
-    private static boolean looksBinaryByContent(Path path, long size) {
+    private static boolean looksBinaryByContent(
+            Path path,
+            long size,
+            Path root,
+            Path displayPath,
+            List<String> diagnostics
+    ) {
         if (size <= 0) {
             return false;
         }
@@ -245,6 +325,7 @@ public final class SafeFileWalker {
             }
             return false;
         } catch (IOException ex) {
+            diagnostics.add("Erro de leitura ignorado: " + safeRelative(root, displayPath));
             return true;
         }
     }

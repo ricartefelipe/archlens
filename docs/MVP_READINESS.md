@@ -70,3 +70,7 @@ Nota: um teste analyzer usa `@DisabledOnOs(OS.WINDOWS)` (symlink) — skip de pl
 - Precisão absoluta de findings ou scores.
 - Pronto para produção / compliance / multi-tenant público.
 - OIDC Bearer como caminho padrão do Compose demo.
+
+## Adendo 2026-10-22
+
+Hash canônico na importação, exclusão administrativa, ciclo de symlink, `--exclude`, certeza no relatório, PDF com acento e login local sem senha embutida foram cobertos por teste automatizado nesta data. E2E de browser, OIDC do cliente e restauração do volume real da instalação continuam pendentes. O smoke `scripts/backup-restore-smoke.sh` prova só o caminho da ferramenta em banco efêmero.

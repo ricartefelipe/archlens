@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ArchLensCliTest {
@@ -64,5 +65,39 @@ class ArchLensCliTest {
         CommandLine cmd = new CommandLine(new ArchLensCli());
         int exit = cmd.execute("scan", "--path", "/no/such/archlens/path", "--out", "/tmp/x.json");
         assertEquals(ExitCodes.INVALID_INPUT, exit);
+    }
+
+    @Test
+    void scanRejectsParentExclusion(@org.junit.jupiter.api.io.TempDir Path tempDir) {
+        CommandLine cmd = new CommandLine(new ArchLensCli());
+        int exit = cmd.execute(
+                "scan",
+                "--path", tempDir.toString(),
+                "--out", tempDir.resolve("out.json").toString(),
+                "--exclude", "../etc"
+        );
+        assertEquals(ExitCodes.INVALID_INPUT, exit);
+    }
+
+    @Test
+    void scanExcludeOmitsDirectory(@org.junit.jupiter.api.io.TempDir Path tempDir) throws Exception {
+        Files.writeString(tempDir.resolve("pom.xml"), "<project></project>");
+        Files.createDirectories(tempDir.resolve("keep"));
+        Files.createDirectories(tempDir.resolve("secret-dir"));
+        Files.writeString(tempDir.resolve("keep/App.java"), "class App {}");
+        Files.writeString(tempDir.resolve("secret-dir/Hidden.java"), "class Hidden {}");
+        Path output = tempDir.resolve("analysis.json");
+
+        CommandLine cmd = new CommandLine(new ArchLensCli());
+        int exit = cmd.execute(
+                "scan",
+                "--path", tempDir.toString(),
+                "--out", output.toString(),
+                "--exclude", "secret-dir"
+        );
+        assertEquals(ExitCodes.SUCCESS, exit);
+        String json = Files.readString(output);
+        assertFalse(json.contains("Hidden.java"));
+        assertTrue(json.contains("App.java"));
     }
 }

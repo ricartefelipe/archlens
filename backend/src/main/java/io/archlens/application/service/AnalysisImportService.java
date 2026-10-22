@@ -101,6 +101,19 @@ public class AnalysisImportService {
             throw new BusinessException("Falha ao interpretar analysis.json");
         }
 
+        if (!ContentHashVerifier.isSupportedSchema(doc.schemaVersion())) {
+            metrics.recordImportSchemaFailure();
+            LOG.warnf("schemaVersion não suportada assessmentId=%s version=%s", assessmentId, doc.schemaVersion());
+            throw new BusinessException(
+                    "schemaVersion não suportada. Versão aceita: " + ContentHashVerifier.SUPPORTED_SCHEMA);
+        }
+        if (!ContentHashVerifier.matches(doc)) {
+            metrics.recordImportIntegrityFailure();
+            LOG.warnf("contentHash divergente assessmentId=%s", assessmentId);
+            throw new BusinessException(
+                    "contentHash não confere com o payload canônico (schema " + ContentHashVerifier.SUPPORTED_SCHEMA + ")");
+        }
+
         AnalysisImportEntity existing = AnalysisImportEntity.findByIdempotency(org.id, assessmentId, idempotencyKey);
         if (existing != null) {
             if (!existing.contentHash.equals(doc.contentHash())) {
@@ -163,6 +176,8 @@ public class AnalysisImportService {
             old.severity = neu.severity;
             old.evidenceIds = neu.evidenceIds;
             old.dimensionKey = neu.dimensionKey;
+            old.origin = neu.origin;
+            old.certainty = neu.certainty;
             old.updatedAt = now;
             // preserva status, reviewNote, reviewedBy, reviewedAt
         }

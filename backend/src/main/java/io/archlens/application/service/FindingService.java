@@ -2,6 +2,8 @@ package io.archlens.application.service;
 
 import io.archlens.api.dto.FindingDtos.*;
 import io.archlens.domain.AuditAction;
+import io.archlens.domain.FindingCertainty;
+import io.archlens.domain.FindingOrigin;
 import io.archlens.infrastructure.persistence.AssessmentEntity;
 import io.archlens.infrastructure.persistence.FindingEntity;
 import io.archlens.infrastructure.persistence.OrganizationEntity;
@@ -71,6 +73,9 @@ public class FindingService {
                 ? List.of()
                 : Arrays.asList(f.evidenceIds.split(","));
         return new FindingResponse(f.id, f.ruleId, f.title, f.description, f.severity, f.status,
-                evidence, f.dimensionKey, f.reviewNote, f.reviewedBy, f.reviewedAt, f.createdAt, f.updatedAt);
+                evidence, f.dimensionKey, f.reviewNote, f.reviewedBy, f.reviewedAt,
+                f.origin == null ? FindingOrigin.AUTOMATED : f.origin,
+                f.certainty == null ? FindingCertainty.HEURISTIC : f.certainty,
+                f.createdAt, f.updatedAt);
     }
 }

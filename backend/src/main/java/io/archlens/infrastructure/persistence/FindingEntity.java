@@ -1,6 +1,8 @@
 package io.archlens.infrastructure.persistence;
 
 import io.archlens.domain.DimensionKey;
+import io.archlens.domain.FindingCertainty;
+import io.archlens.domain.FindingOrigin;
 import io.archlens.domain.FindingSeverity;
 import io.archlens.domain.FindingStatus;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
@@ -39,6 +41,10 @@ public class FindingEntity extends PanacheEntityBase {
     public String reviewedBy;
     @Column(name = "reviewed_at")
     public Instant reviewedAt;
+    @Enumerated(EnumType.STRING)
+    public FindingOrigin origin;
+    @Enumerated(EnumType.STRING)
+    public FindingCertainty certainty;
     @Column(name = "created_at")
     public Instant createdAt;
     @Column(name = "updated_at")

@@ -20,11 +20,9 @@ Abra [http://localhost:3000](http://localhost:3000).
 
 ### Autenticação
 
-- **Login local**: somente com `AUTH_LOCAL_ENABLED=true` (dev/teste). Credenciais: `admin`/`admin123`, `architect`/`architect123`, `viewer`/`viewer123`.
+- **Login local**: somente com `AUTH_LOCAL_ENABLED=true`, `ARCHLENS_PROFILE_LABEL` diferente de `production` e senhas em `AUTH_LOCAL_*_PASSWORD`. As senhas de demonstração também exigem `ARCHLENS_ALLOW_DEMO_CREDENTIALS=true`. Não há senha padrão no código.
 - **Keycloak/OIDC**: defina `KEYCLOAK_ISSUER`, `KEYCLOAK_CLIENT_ID` e `KEYCLOAK_CLIENT_SECRET`.
-- Em produção, não habilite login local e use `AUTH_SECRET` forte.
-
-VIEWER tem acesso somente leitura; ARCHITECT/ADMIN podem alterar achados, questionário e roadmap. O backend permanece a autoridade de autorização.
+- Em instalação de cliente, login local fica desligado e `AUTH_SECRET` é forte. ADMIN pode retirar os dados da avaliação; ARCHITECT revisa; VIEWER só lê.
 
 ## Scripts
 

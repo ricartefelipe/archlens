@@ -42,6 +42,8 @@ type FindingApi = {
   reviewNote?: string;
   updatedAt: string;
   reviewedBy?: string;
+  origin?: "AUTOMATED";
+  certainty?: "STRUCTURAL" | "HEURISTIC";
 };
 
 function mapAssessment(a: AssessmentApi): Assessment {
@@ -71,6 +73,9 @@ function mapFinding(f: FindingApi, assessmentId: string): Finding {
     category: f.dimensionKey ?? "general",
     evidence: (f.evidenceIds ?? []).join(", "),
     recommendation: f.reviewNote,
+    origin: f.origin,
+    certainty: f.certainty,
+    reviewedBy: f.reviewedBy,
     updatedAt: f.updatedAt,
     updatedBy: f.reviewedBy,
   };
@@ -141,6 +146,16 @@ export async function getAssessment(
     authHeaders(auth),
   );
   return mapAssessment(a);
+}
+
+export async function eraseAssessment(
+  id: string,
+  auth?: AuthContext,
+): Promise<void> {
+  await apiFetch<void>(`/assessments/${id}`, {
+    method: "DELETE",
+    ...authHeaders(auth),
+  });
 }
 
 export async function uploadAnalysis(

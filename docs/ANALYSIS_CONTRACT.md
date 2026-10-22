@@ -27,7 +27,13 @@ O `contentHash` é calculado sobre o JSON serializado com propriedades ordenadas
 
 Duas análises do mesmo conteúdo de projeto (mesmos arquivos relevantes) devem produzir o mesmo `contentHash`.
 
+O backend **recalcula** esse hash na importação (`ContentHashVerifier`). Payload com hash divergente é recusado. Não se aceita "corrigir" o hash no cliente.
+
 Coleções são ordenadas antes da serialização (sinais, deps, evidências, etc.).
+
+## Versão
+
+Somente `1.0.0`. Outra `schemaVersion` não é migrada no import: a API responde erro e o operador atualiza o CLI. Uma `1.1.0` futura precisa de ADR, schema novo e janela em que o backend ainda sabe recusar a versão que não implementa.
 
 ## Segredos e evidências
 

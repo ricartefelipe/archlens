@@ -5,7 +5,9 @@ import io.archlens.analyzer.core.model.AnalysisDocument;
 import io.archlens.analyzer.core.schema.SchemaValidator;
 import io.archlens.analyzer.core.testsupport.WorkspacePaths;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -75,5 +77,45 @@ class ProjectAnalyzerTest {
         assertFalse(document.secrets().isEmpty());
         assertFalse(document.evidences().isEmpty());
         assertEquals("8", document.project().javaVersionHint());
+    }
+
+    @Test
+    void doesNotExecutePayloadAndOmitsShellSecret(@TempDir Path tempDir) throws Exception {
+        Path marker = tempDir.resolve("EXECUTED");
+        Files.writeString(tempDir.resolve("pom.xml"), """
+                <project>
+                  <modelVersion>4.0.0</modelVersion>
+                  <groupId>demo</groupId>
+                  <artifactId>demo</artifactId>
+                  <version>1</version>
+                </project>
+                """);
+        Files.createDirectories(tempDir.resolve("src/main/java"));
+        Files.writeString(tempDir.resolve("src/main/java/App.java"), """
+                class App {
+                  void danger() { Runtime.getRuntime().exec("touch EXECUTED"); }
+                }
+                """);
+        Files.writeString(tempDir.resolve("run.sh"), """
+                #!/bin/sh
+                touch EXECUTED
+                password="fixture-shell-secret-not-real"
+                """);
+        Files.createDirectories(tempDir.resolve("secret-dir"));
+        Files.writeString(tempDir.resolve("secret-dir/Hidden.java"), "class Hidden {}");
+
+        AnalysisDocument document = ProjectAnalyzer.analyze(
+                tempDir,
+                io.archlens.analyzer.core.walk.WalkLimits.DEFAULT.withExclusions(java.util.Set.of("secret-dir"))
+        );
+        String json = AnalysisJson.writePretty(document);
+        assertFalse(Files.exists(marker));
+        assertFalse(json.contains("fixture-shell-secret-not-real"));
+        assertFalse(json.contains("class Hidden"));
+        assertFalse(json.contains("Runtime.getRuntime"));
+        assertTrue(document.secrets().stream().anyMatch(secret -> "PASSWORD".equals(secret.type())));
+        assertTrue(document.signals().stream().anyMatch(signal -> signal.id().startsWith("walk.diagnostic")));
+        SchemaValidator.ValidationResult result = SchemaValidator.validateJson(schemaPath(), json);
+        assertTrue(result.success(), result.message());
     }
 }

@@ -1,11 +1,13 @@
 package io.archlens.report;
 
+import com.openhtmltopdf.extend.FSSupplier;
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
 import io.archlens.api.exception.ConflictException;
 import io.archlens.application.port.NarrativeGenerator;
 import io.archlens.application.service.AuditService;
 import io.archlens.application.service.OrganizationService;
 import io.archlens.domain.AuditAction;
+import io.archlens.domain.FindingCertainty;
 import io.archlens.infrastructure.observability.ArchLensMetrics;
 import io.archlens.infrastructure.persistence.*;
 import io.archlens.infrastructure.security.IdentityService;
@@ -14,6 +16,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
@@ -126,6 +129,7 @@ public class ReportService {
         if (snap == null) {
             throw new NotFoundException("Snapshot não encontrado");
         }
+        assertIntact(snap);
         return snap;
     }
 
@@ -159,9 +163,9 @@ public class ReportService {
         StringBuilder sb = new StringBuilder();
         sb.append("<!DOCTYPE html><html lang=\"pt-BR\"><head><meta charset=\"UTF-8\"/>");
         sb.append("<title>ArchLens — ").append(escape(assessment.name)).append("</title>");
-        sb.append("<style>body{font-family:Segoe UI,Arial,sans-serif;margin:40px;color:#1a1a2e}");
+        sb.append("<style>body{font-family:ArchLensSans,sans-serif;margin:40px;color:#1a1a2e}");
         sb.append("h1,h2{color:#16213e}table{border-collapse:collapse;width:100%;margin:16px 0}");
-        sb.append("th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background:#e8eef5}");
+        sb.append("th,td{border:1px solid #ccc;padding:8px;text-align:left;vertical-align:top}th{background:#e8eef5}");
         sb.append(".meta{color:#555;font-size:0.95em}.note{background:#f7f7f7;padding:12px;border-left:4px solid #888}</style></head><body>");
         sb.append("<h1>Relatório ArchLens</h1>");
         sb.append("<p class=\"meta\"><strong>Avaliação:</strong> ").append(escape(assessment.name)).append("</p>");
@@ -194,7 +198,9 @@ public class ReportService {
         }
 
         sb.append("<h2>Scores por dimensão</h2>");
-        sb.append("<p class=\"note\">").append(escape(scoresDisclaimer)).append("</p>");
+        sb.append("<p class=\"note\">").append(escape(scoresDisclaimer))
+                .append(" Não há uma nota única: cada dimensão tem rationale próprio. ")
+                .append("Diagnóstico de modernização: ação, código e revisão humana.</p>");
         sb.append("<table><tr><th>Dimensão</th><th>Score</th><th>Rationale</th></tr>");
         for (var d : dimensions) {
             sb.append("<tr><td>").append(escape(d.dimensionKey.name())).append("</td><td>")
@@ -203,12 +209,43 @@ public class ReportService {
         }
         sb.append("</table>");
 
-        sb.append("<h2>Achados revisados</h2><table><tr><th>Regra</th><th>Severidade</th><th>Status</th><th>Nota</th></tr>");
+        sb.append("<h2>Detecção automatizada</h2>");
+        sb.append("<p class=\"note\">Achados produzidos por regras sobre o analysis.json. ");
+        sb.append("STRUCTURAL significa que o parser observou um construto; isso não comprova risco de negócio. ");
+        sb.append("HEURISTIC é sinal aproximado: falso positivo e falso negativo são esperados. ");
+        sb.append("A decisão registrada está na seção de revisão do arquiteto.</p>");
+        sb.append("<table><tr><th>Regra</th><th>Severidade</th><th>Certeza</th><th>Status</th><th>Evidência</th></tr>");
         for (var f : findings) {
-            sb.append("<tr><td>").append(escape(f.title)).append("</td><td>")
+            String certainty = f.certainty == null ? FindingCertainty.HEURISTIC.name() : f.certainty.name();
+            sb.append("<tr><td>").append(escape(f.title))
+                    .append("<br/><span class=\"meta\">").append(escape(f.ruleId)).append("</span></td><td>")
                     .append(escape(f.severity.name())).append("</td><td>")
+                    .append(escape(certainty)).append("</td><td>")
                     .append(escape(f.status.name())).append("</td><td>")
+                    .append(escape(f.evidenceIds)).append("</td></tr>");
+        }
+        sb.append("</table>");
+
+        sb.append("<h2>Revisão do arquiteto</h2>");
+        sb.append("<p>Decisão humana. Itens sem revisor permanecem pendentes e não devem ser tratados como aceitos.</p>");
+        sb.append("<table><tr><th>Regra</th><th>Status</th><th>Revisor</th><th>Quando</th><th>Nota</th></tr>");
+        boolean anyReview = false;
+        for (var f : findings) {
+            if (f.reviewedBy == null || f.reviewedBy.isBlank()) {
+                continue;
+            }
+            anyReview = true;
+            String when = f.reviewedAt == null
+                    ? ""
+                    : DateTimeFormatter.ISO_INSTANT.withZone(ZoneOffset.UTC).format(f.reviewedAt);
+            sb.append("<tr><td>").append(escape(f.title)).append("</td><td>")
+                    .append(escape(f.status.name())).append("</td><td>")
+                    .append(escape(f.reviewedBy)).append("</td><td>")
+                    .append(escape(when)).append("</td><td>")
                     .append(escape(f.reviewNote)).append("</td></tr>");
+        }
+        if (!anyReview) {
+            sb.append("<tr><td colspan=\"5\">Nenhuma revisão registrada.</td></tr>");
         }
         sb.append("</table>");
 
@@ -247,6 +284,14 @@ public class ReportService {
     private byte[] renderPdf(String html) {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             PdfRendererBuilder builder = new PdfRendererBuilder();
+            FSSupplier<InputStream> font = () -> {
+                InputStream in = ReportService.class.getResourceAsStream("/fonts/DejaVuSans.ttf");
+                if (in == null) {
+                    throw new IllegalStateException("Fonte do relatório ausente");
+                }
+                return in;
+            };
+            builder.useFont(font, "ArchLensSans");
             builder.withHtmlContent(html, null);
             builder.toStream(out);
             builder.run();
@@ -258,6 +303,15 @@ public class ReportService {
         } catch (Exception e) {
             LOG.error("Falha ao renderizar PDF", e);
             throw new IllegalStateException("Falha ao gerar PDF do relatório", e);
+        }
+    }
+
+    private void assertIntact(ReportSnapshotEntity snap) {
+        String actual = "sha256:" + sha256(snap.htmlContent == null ? "" : snap.htmlContent);
+        if (snap.contentHash == null || !snap.contentHash.equals(actual)) {
+            metrics.recordReportIntegrityFailure();
+            LOG.errorf("Snapshot adulterado assessmentId=%s snapshotId=%s", snap.assessmentId, snap.id);
+            throw new ConflictException("Snapshot adulterado: o HTML não confere com o contentHash");
         }
     }
 

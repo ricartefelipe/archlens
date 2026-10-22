@@ -86,6 +86,13 @@ Depois: login → criar avaliação → importar `/tmp/analysis.json` → questi
 - [MVP Readiness](docs/MVP_READINESS.md)
 - [Roteiro de demo](docs/DEMO_SCRIPT.md)
 - [Prontidão comercial](docs/COMMERCIAL_READINESS.md)
+- [Pacote de diagnóstico](docs/commercial/PACOTE_DIAGNOSTICO.md)
+- [Premissas e escopo](docs/commercial/PREMISSAS_E_ESCOPO.md)
+- [Segurança](SECURITY.md)
+- [Implantação](DEPLOYMENT.md)
+- [Operação](OPERATIONS.md)
+- [Checklist de release](RELEASE_CHECKLIST.md)
+- [Changelog](CHANGELOG.md)
 
 ## CI
 

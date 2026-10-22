@@ -29,13 +29,17 @@ Atualizado em 2026-07-17 (Prompt 4/5 — hardening).
 | Upload malicioso / JSON gigante | Alta | JSON Schema; `max-body-size`; `archlens.import.max-bytes`; rate limit de import |
 | ZIP bomb | Média | Analyzer **não** extrai ZIP de upload; ignora binários `.zip` no walk; N/A na API (só JSON) |
 | XXE via POM | Alta | `MavenPomParser` com DTD/entidades externas desabilitadas |
-| Symlink escape no scan | Alta | `SafeFileWalker` canônico; não segue symlink fora da raiz |
+| Symlink escape ou ciclo no scan | Alta | Não segue alvo fora da raiz; diretório já visitado é ignorado |
+| Exclusão de caminho | Média | `scan --exclude` não lê o caminho pedido |
+| Adulteração do `analysis.json` | Alta | `contentHash` recalculado; HTTP 400 |
 | Vazamento de segredo no JSON/logs | Alta | Sem valor; hash contextual; CI bloqueia vazamento do segredo fictício; logs sem payload |
-| Elevação de papel | Alta | RBAC no backend; prod sem headers `X-User`/`X-Roles`; OIDC + roles de realm |
-| Acesso cruzado entre orgs | Alta | Filtro por `organization_id`; 404 em acesso cruzado |
+| Elevação de papel | Alta | RBAC no backend; prod sem headers `X-User`/`X-Roles`; login local desligado com perfil `production` |
+| Acesso cruzado entre orgs | Alta | Filtro por `organization_id`; 404 em acesso cruzado, inclusive na exclusão |
 | Exfiltração por LLM | Alta | `LLM_ENABLED=false` default; adapter não envia código/segredos |
-| Replay / duplo import | Média | `Idempotency-Key` + contentHash |
-| Tampering de relatório | Média | Snapshot imutável + hash |
+| Replay / duplo import | Média | `Idempotency-Key` + contentHash conferido |
+| Tampering de relatório | Média | Snapshot imutável; download confere hash do HTML (409 se divergir) |
+| Credencial de demo em instalação de cliente | Alta | Sem senha padrão no código; flag explícita só no Compose demo |
+| Dado retido após o contrato | Alta | `DELETE` da avaliação por ADMIN, com auditoria redigida |
 | CSRF / clickjacking | Média | Headers `X-Frame-Options`, CSP `frame-ancestors` |
 | Swagger público em prod | Média | OpenAPI/Swagger desabilitados no perfil `%prod` |
 | Secrets em Compose | Média | Defaults só no perfil demo; prod exige env sem defaults |

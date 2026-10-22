@@ -37,6 +37,7 @@ class RuleEngineTest {
         var findings = ruleEngine.evaluate(UUID.randomUUID(), UUID.randomUUID(), doc);
         assertFalse(findings.isEmpty());
         assertTrue(findings.stream().allMatch(f -> f.evidenceIds != null && !f.evidenceIds.isBlank()));
+        assertTrue(findings.stream().allMatch(f -> f.origin != null && f.certainty != null));
     }
 
     @Test

@@ -1,6 +1,8 @@
 package io.archlens.api.dto;
 
 import io.archlens.domain.DimensionKey;
+import io.archlens.domain.FindingCertainty;
+import io.archlens.domain.FindingOrigin;
 import io.archlens.domain.FindingSeverity;
 import io.archlens.domain.FindingStatus;
 import jakarta.validation.constraints.NotNull;
@@ -29,6 +31,8 @@ public final class FindingDtos {
             String reviewNote,
             String reviewedBy,
             Instant reviewedAt,
+            FindingOrigin origin,
+            FindingCertainty certainty,
             Instant createdAt,
             Instant updatedAt
     ) {}

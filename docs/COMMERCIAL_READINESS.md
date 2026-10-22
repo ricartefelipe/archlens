@@ -1,101 +1,62 @@
-# ArchLens — Prontidão comercial (serviço diagnóstico assistido)
+# ArchLens — Prontidão comercial (diagnóstico assistido)
 
-Atualizado em **2026-07-17**. Documento de posicionamento — **sem preço** e **sem promessa de precisão absoluta**.
+Atualizado em **2026-10-22**. Posicionamento para piloto no ambiente do cliente. Sem preço de mercado, sem cliente citado e sem promessa de precisão absoluta.
 
-## Cliente-alvo
+O pacote entregue está em [PACOTE_DIAGNOSTICO](commercial/PACOTE_DIAGNOSTICO.md). O anexo de premissas está em [PREMISSAS_E_ESCOPO](commercial/PREMISSAS_E_ESCOPO.md).
 
-- Empresas com aplicações **Java legadas** (Maven/Gradle) pouco documentadas.
-- Times de arquitetura / modernização que precisam de inventário, riscos e plano executável.
-- Cenários em que **código-fonte não pode sair** do perímetro do cliente (ou do ambiente de consultoria controlado).
+## Cliente ideal, comprador e usuário
 
-## Problema que endereçamos
+- **Cliente ideal:** empresa com Java legado (Maven/Gradle) pouco documentado, que não pode enviar código para fora.
+- **Comprador:** patrocinador da modernização (liderança de arquitetura ou tecnologia).
+- **Usuário:** arquiteto que roda o CLI no host do cliente e revisa achados.
 
-Sistemas legados com conhecimento concentrado, dívida técnica opaca e pressão por modernização — sem tempo para análise manual completa e sem aceitar upload de fonte para SaaS genérico.
+## Pitch
 
-## Oferta: serviço de diagnóstico assistido
+O time precisa de inventário, riscos e um plano de 30/60/90 dias sem entregar o código a um serviço externo. O ArchLens lê o projeto no perímetro, importa só metadados e hashes, e o arquiteto publica um relatório em que dá para ver o que foi detecção automática e o que foi decisão humana.
 
-ArchLens é a **plataforma de apoio** a um engajamento de arquitetura:
+## Oferta de piloto
 
-1. Análise estática **offline** no ambiente do cliente (CLI).
-2. Importação apenas do `analysis.json` (metadados/hashes/sinais — sem fonte).
-3. Regras + questionário + scores com rationale.
-4. Revisão humana de findings.
-5. Roadmap e relatório HTML/PDF publicável (snapshot imutável).
-6. Auditoria da jornada.
+Um sistema, uma instalação no cliente, fee fixo a combinar. Entrega: inventário, achados revisados, riscos, esforço estimado pelo arquiteto, roadmap, reunião de apresentação e termo de escopo. A demonstração de 5–10 minutos usa apenas `samples/legacy-java-demo` ([roteiro](DEMO_SCRIPT.md)).
 
-Não é substituir o arquiteto; é **acelerar e rastrear** o diagnóstico.
+**Preço:** hipótese de empacotamento (piloto fechado), não número de mercado. O valor só depois de conversas reais. Nada neste repositório é proposta comercial.
 
-## Entradas
+**Suporte:** hipótese a negociar no anexo de premissas (horário comercial, sem plantão). Não é SLA vigente.
 
-| Entrada | Responsável | Nota |
-|---------|-------------|------|
-| Código Java legado (leitura local) | Cliente / consultoria no site do cliente | Nunca enviado ao backend na jornada padrão |
-| `analysis.json` gerado pelo CLI | Operador técnico | Validado contra schema |
-| Respostas de questionário | Arquiteto | Contexto de negócio/infra |
-| Revisões de findings / roadmap | Arquiteto | Decisão humana |
+## O que o piloto não é
 
-## Entregáveis
+SaaS público, scanner infalível, pentest, projeto de implementação da modernização, ou ambiente Compose demo com senha `admin123`.
 
-- Inventário (módulos, dependências, sinais).
-- Findings com evidências e status de revisão.
-- Scores dimensionais com rationale (assistidos).
-- Opções/itens de modernização e roadmap.
-- Relatório HTML e PDF; snapshot publicado imutável.
-- Trilha de auditoria da avaliação.
+## Responsabilidades
 
-## Responsabilidades do arquiteto
-
-- Validar findings (aprovar/rejeitar/comentar).
-- Interpretar scores no contexto do negócio.
-- Priorizar roadmap e comunicação ao patrocinador.
-- Garantir que o escopo do scan e limites do analyzer estão claros ao cliente.
+| Fornecedor | Cliente |
+|------------|---------|
+| Análise offline, importação, revisão assistida, relatório | Host, exclusões, IdP, TLS, backup |
+| Dizer o que é heurístico | Arquiteto que aceita ou dispensa achados |
+| Retirar dados quando pedido | Revogar acessos no encerramento |
 
 ## Automatizado vs revisão humana
 
 | Automatizado | Revisão humana obrigatória |
 |--------------|----------------------------|
-| Walk seguro de arquivos, inventário, sinais/heurísticas | Aceitação de findings |
-| Detecção de segredos **por hash** (não valor) | Interpretação de risco real |
-| Regras → findings candidatos | Priorização e exclusões |
-| Cálculo de scores/rationale assistido | Decisão de modernização |
-| Geração de relatório/snapshot | Conteúdo final entregue ao cliente |
+| Walk seguro, inventário, sinais | Aceite do achado |
+| Certeza STRUCTURAL (construto visto) ou HEURISTIC (regex/métrica) | Interpretação de risco |
+| Segredo só por indicador, nunca o valor | Decidir se o risco é real |
+| Scores por dimensão com rationale | Não tratar como nota única |
+| Relatório com as duas seções e snapshot | Texto entregue ao patrocinador |
 
-## Limites e disclaimers
+## Antes de analisar código de cliente
 
-- Análise **estática**; não executa o sistema alvo.
-- Parsers e detectores são **heurísticos** — falsos positivos/negativos são esperados.
-- Gradle/version catalogs e POMs com parents remotos têm resolução limitada.
-- Demo Compose usa autenticação simplificada — **não** é o modo de entrega em cliente.
-- Não há garantia de cobertura completa nem de “nota única” de qualidade.
+1. NDA ou o anexo de premissas assinado.
+2. Host de leitura e lista `--exclude`.
+3. Confirmação de que só `analysis.json` sai da máquina de scan, se sair.
+4. Instalação com OIDC real, sem login local e sem senha de demo.
+5. Backup do Postgres combinado e teste de restauração no ambiente do cliente (o smoke do repositório não conta como esse teste).
+6. Quem é ADMIN para a retirada no fim.
 
-## Requisitos antes de analisar código de cliente
+## Riscos que continuam bloqueando SaaS público
 
-1. Acordo de confidencialidade / escopo escrito.
-2. Ambiente isolado (máquina ou rede do cliente) para o CLI.
-3. Lista do que **não** será escaneado (secrets vaults, binários, dados pessoais).
-4. Confirmação de que apenas `analysis.json` (ou artefatos equivalentes) sairá da máquina de scan, se houver transferência.
-5. Perfis de acesso (ARCHITECT/VIEWER) e organização definidos.
-6. Backup e política de retenção do Postgres combinados.
-7. Treino rápido do arquiteto na jornada e nas limitações.
+Multi-tenant em escala, OIDC do cliente ainda não homologado nesta sessão, compliance externa, rate limit em memória, expectativa de precisão absoluta e qualquer upload de fonte para a nuvem do fornecedor.
 
-## Implantação isolada / offline
+## Veredito de venda
 
-- **Recomendado para piloto:** Compose/demo endurecido ou overlay prod **no perímetro do cliente**, com OIDC real, secrets reais, TLS, CORS restrito.
-- CLI analyzer: zero rede necessária.
-- Backend/frontend: rede local; sem dependência de LLM por padrão (`ARCHLENS_LLM_ENABLED=false`).
-
-## Riscos que bloqueiam SaaS público
-
-| Risco | Por que bloqueia |
-|-------|------------------|
-| Multi-tenant forte + isolamento comprovado em escala | MVP isola por org em demo; não é produto multi-tenant maduro |
-| OIDC/SSO corporativo ponta a ponta no caminho padrão | Demo ainda favorece headers/login local |
-| Compliance (LGPD, retenção, DPA, auditoria externa) | Não certificado |
-| Rate limit / HA / secrets management em cluster | Rate limit in-memory; sem K8s HA |
-| Expectativa de precisão absoluta de scanner | Heurístico por design |
-| Upload de fonte para nuvem do fornecedor | Contrário à proposta de valor |
-
-## Posicionamento de venda (piloto)
-
-Oferecer **piloto assistido** (semanas) com entrega de relatório e workshop de roadmap — não assinatura SaaS pública.  
-Preço e SLA ficam fora deste documento até validação comercial separada.
+**GO PARA PILOTO** assistido, no perímetro do cliente, com o termo de premissas. **NO-GO** para SaaS público e para declarar produção homologada sem IdP, TLS e restauração reais do cliente.

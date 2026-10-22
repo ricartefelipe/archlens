@@ -119,3 +119,28 @@
 **Decisão:** Tags pinadas (`postgres:16.6-alpine`, Keycloak `26.0.7`, Node/Temurin fixos), Dockerfiles multi-stage, usuário não-root, volumes nomeados, `down` sem `-v` nos scripts oficiais.
 
 **Motivo:** Reproducibilidade e menor superfície; preservar dados em reinícios.
+
+## ADR-021: Hash canônico conferido na importação
+
+**Decisão:** O backend recalcula o `contentHash` com a mesma canonicalização do CLI (propriedades ordenadas, sem `generatedAt`, `durationMs` e o próprio hash). Divergência rejeita o import. A única `schemaVersion` aceita é `1.0.0`. Não há migração silenciosa: uma versão nova exige CLI e backend publicados juntos e continua fail-closed para a versão desconhecida.
+
+**Motivo:** JSON editado à mão não pode herdar o hash de outra análise. O contrato deixa de ser só formato e passa a ser integridade.
+
+## ADR-022: Retirada administrativa não é edição do snapshot
+
+**Decisão:** Snapshot publicado continua imutável para correção. A exclusão da avaliação, restrita a ADMIN, apaga inclusive HTML/PDF e redige a auditoria. Acesso de outra organização segue 404.
+
+**Motivo:** Imutabilidade protege a entrega; o offboarding contratual precisa poder apagar o dado. São operações diferentes.
+
+## ADR-023: Login local sem senha embutida
+
+**Decisão:** Não há fallback `admin123` no código. Senha vem de ambiente. Senhas de demonstração conhecidas só autenticam com `ARCHLENS_ALLOW_DEMO_CREDENTIALS=true`. `ARCHLENS_PROFILE_LABEL=production` desliga o login local mesmo que a flag de auth local esteja ligada. O build da imagem não define `AUTH_LOCAL_ENABLED`.
+
+**Motivo:** Instalação de cliente não pode herdar credencial de demo por omissão. A demo continua explícita no Compose.
+
+## ADR-024: Relatório separa detecção e revisão
+
+**Decisão:** Achados guardam origem `AUTOMATED` e certeza `STRUCTURAL` ou `HEURISTIC`. O HTML/PDF tem as duas seções, disclaimer de que não há nota única, e fonte DejaVu Sans embutida para português. O hash do snapshot é o do HTML; adulteração do HTML falha no download.
+
+**Motivo:** O patrocinador precisa ver o que a regra produziu e o que o arquiteto decidiu, inclusive com acentos no PDF.
+

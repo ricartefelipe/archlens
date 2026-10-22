@@ -108,6 +108,9 @@ export interface Finding {
   category: string;
   evidence?: string;
   recommendation?: string;
+  origin?: "AUTOMATED";
+  certainty?: "STRUCTURAL" | "HEURISTIC";
+  reviewedBy?: string;
   updatedAt: string;
   updatedBy?: string;
 }

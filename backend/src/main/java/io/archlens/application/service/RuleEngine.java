@@ -3,6 +3,8 @@ package io.archlens.application.service;
 import io.archlens.application.model.AnalysisDocument;
 import io.archlens.application.model.RuleDefinition;
 import io.archlens.domain.DimensionKey;
+import io.archlens.domain.FindingCertainty;
+import io.archlens.domain.FindingOrigin;
 import io.archlens.domain.FindingSeverity;
 import io.archlens.domain.FindingStatus;
 import io.archlens.infrastructure.persistence.FindingEntity;
@@ -41,6 +43,8 @@ public class RuleEngine {
             f.status = FindingStatus.OPEN;
             f.evidenceIds = String.join(",", evidence.get());
             f.dimensionKey = rule.dimension();
+            f.origin = FindingOrigin.AUTOMATED;
+            f.certainty = rule.certainty() == null ? FindingCertainty.HEURISTIC : rule.certainty();
             f.createdAt = now;
             f.updatedAt = now;
             findings.add(f);

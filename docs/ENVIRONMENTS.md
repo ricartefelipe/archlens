@@ -26,6 +26,9 @@ O Compose padrão usa **demo**, não produção. Overlay de exemplo: `infra/dock
 | `ARCHLENS_HSTS_ENABLED` | `false` | `true` sob HTTPS |
 | `ARCHLENS_OPENAPI_ENABLED` | Swagger UI no demo | `false` |
 | `ARCHLENS_LLM_ENABLED` | `false` | `false` salvo necessidade explícita |
+| `ARCHLENS_PROFILE_LABEL` (frontend) | `demo` | `production` (desliga login local) |
+| `ARCHLENS_ALLOW_DEMO_CREDENTIALS` | `true` só na demo | `false` |
+| `AUTH_LOCAL_*_PASSWORD` | fictícias, explícitas no Compose demo | ausentes |
 
 ## Variáveis críticas (frontend)
 

@@ -5,8 +5,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Button } from "@/components/ui/Button";
+import { EraseAssessmentButton } from "@/components/assessments/EraseAssessmentButton";
 import { getAssessment } from "@/lib/api/assessments";
 import { ApiClientError } from "@/lib/api/client";
+import { hasRole } from "@/lib/auth/roles";
 import { getSessionContext } from "@/lib/auth/session";
 import { formatDate } from "@/lib/utils";
 
@@ -96,6 +98,9 @@ export default async function AssessmentOverviewPage({
             <Button href={`/assessments/${id}/report`} variant="secondary">
               Relatório
             </Button>
+            {hasRole(session.roles, "ADMIN") ? (
+              <EraseAssessmentButton assessmentId={id} />
+            ) : null}
           </div>
         </div>
       ) : null}

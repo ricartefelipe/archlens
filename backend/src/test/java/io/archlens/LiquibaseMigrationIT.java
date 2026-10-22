@@ -41,6 +41,8 @@ class LiquibaseMigrationIT {
             assertTrue(tableExists(conn, "report_snapshot"));
             assertTrue(tableExists(conn, "inventory_module"));
             assertTrue(columnExists(conn, "inventory_module", "organization_id"));
+            assertTrue(columnExists(conn, "finding", "origin"));
+            assertTrue(columnExists(conn, "finding", "certainty"));
             assertTrue(indexExists(conn, "idx_finding_org_assessment"));
         }
 

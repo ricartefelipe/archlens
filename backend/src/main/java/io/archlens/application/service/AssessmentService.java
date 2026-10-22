@@ -33,6 +33,8 @@ public class AssessmentService {
     AuditService auditService;
     @Inject
     IdentityService identityService;
+    @Inject
+    AssessmentErasureService assessmentErasureService;
 
     public List<AssessmentResponse> list() {
         var org = organizationService.getOrganization();
@@ -91,13 +93,8 @@ public class AssessmentService {
         return toResponse(e);
     }
 
-    @Transactional
     public void delete(UUID id) {
-        identityService.requireRole(io.archlens.domain.UserRole.ADMIN);
-        var org = organizationService.getOrganization();
-        AssessmentEntity e = AssessmentEntity.findByOrgAndId(org.id, id);
-        if (e == null) throw new NotFoundException("Avaliação não encontrada");
-        e.delete();
+        assessmentErasureService.erase(id);
     }
 
     private AssessmentResponse toResponse(AssessmentEntity e) {

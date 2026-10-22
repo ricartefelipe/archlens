@@ -1,8 +1,15 @@
 package io.archlens;
 
+import io.archlens.application.model.AnalysisDocument;
+import io.archlens.application.service.ContentHashVerifier;
+import io.archlens.infrastructure.persistence.ReportSnapshotEntity;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.*;
 
 import java.nio.charset.StandardCharsets;
@@ -29,12 +36,10 @@ class ArchLensApiIT {
     static int findingsCount;
 
     static final String DEMO_JSON;
-    static final String VALID_JSON;
 
     static {
         try {
             DEMO_JSON = Files.readString(Path.of("src/test/resources/demo-analysis.json"));
-            VALID_JSON = Files.readString(Path.of("src/test/resources/valid-analysis.json"));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -149,7 +154,7 @@ class ArchLensApiIT {
 
     @Test
     @Order(6)
-    void importIsIdempotentAndConflictsOnDifferentPayload() {
+    void importIsIdempotentAndConflictsOnDifferentPayload() throws Exception {
         String first = given()
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
@@ -181,7 +186,7 @@ class ArchLensApiIT {
                 .header("X-Roles", "ARCHITECT")
                 .header("Idempotency-Key", "idem-key-stable")
                 .contentType(ContentType.JSON)
-                .body(VALID_JSON)
+                .body(rehashedWithRoot(DEMO_JSON, "other-root"))
         .when()
                 .post("/api/v1/assessments/" + assessmentId + "/import")
         .then()
@@ -322,7 +327,7 @@ class ArchLensApiIT {
 
     @Test
     @Order(10)
-    void reportHtmlPdfAndImmutableSnapshot() {
+    void reportHtmlPdfAndImmutableSnapshot() throws Exception {
         snapshotId = given()
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
@@ -332,6 +337,17 @@ class ArchLensApiIT {
                 .statusCode(200)
                 .body("contentHash", startsWith("sha256:"))
                 .extract().path("id");
+
+        String secondSnapshot = given()
+                .header("X-User", "tester")
+                .header("X-Roles", "ARCHITECT")
+        .when()
+                .post("/api/v1/assessments/" + assessmentId + "/reports/generate")
+        .then()
+                .statusCode(200)
+                .body("version", equalTo(2))
+                .extract().path("id");
+        assertNotEquals(snapshotId, secondSnapshot);
 
         String html = given()
                 .header("X-User", "tester")
@@ -345,6 +361,10 @@ class ArchLensApiIT {
                 .extract().asString();
 
         assertTrue(html.contains("Relatório ArchLens"));
+        assertTrue(html.contains("Detecção automatizada"));
+        assertTrue(html.contains("Revisão do arquiteto"));
+        assertTrue(html.contains("architect"));
+        assertTrue(html.contains("ação"));
         assertTrue(html.contains("Limitações"));
         assertTrue(html.contains("Roadmap"));
         publishedHtmlHash = given()
@@ -369,6 +389,11 @@ class ArchLensApiIT {
 
         assertTrue(pdf.length >= 100);
         assertEquals("%PDF", new String(pdf, 0, 4, StandardCharsets.US_ASCII));
+        try (PDDocument pdfDoc = PDDocument.load(pdf)) {
+            String text = new PDFTextStripper().getText(pdfDoc);
+            assertTrue(text.contains("ação"), text);
+            assertTrue(text.contains("Detecção automatizada") || text.contains("Detec"), text);
+        }
 
         given()
                 .header("X-User", "tester")
@@ -441,5 +466,101 @@ class ArchLensApiIT {
                 .post("/api/v1/assessments/" + assessmentId + "/import")
         .then()
                 .statusCode(400);
+    }
+
+    @Test
+    @Order(12)
+    void tamperedContentHashIsRejected() throws Exception {
+        String id = given()
+                .header("X-User", "tester")
+                .header("X-Roles", "ADMIN")
+                .contentType(ContentType.JSON)
+                .body(Map.of("name", "Modernização — ação", "description", "Hash"))
+        .when()
+                .post("/api/v1/assessments")
+        .then()
+                .statusCode(201)
+                .extract().path("id");
+
+        String tampered = DEMO_JSON.replace("legacy-java-demo", "legacy-java-evil");
+        given()
+                .header("X-User", "tester")
+                .header("X-Roles", "ARCHITECT")
+                .header("Idempotency-Key", "tampered-hash")
+                .contentType(ContentType.JSON)
+                .body(tampered)
+        .when()
+                .post("/api/v1/assessments/" + id + "/import")
+        .then()
+                .statusCode(400)
+                .body("detail", containsString("contentHash"));
+
+        given()
+                .header("X-User", "viewer")
+                .header("X-Roles", "VIEWER")
+        .when()
+                .delete("/api/v1/assessments/" + id)
+        .then()
+                .statusCode(403);
+
+        given()
+                .header("X-User", "tester")
+                .header("X-Roles", "ADMIN")
+        .when()
+                .delete("/api/v1/assessments/" + id)
+        .then()
+                .statusCode(204);
+
+        given()
+                .header("X-User", "tester")
+                .header("X-Roles", "ADMIN")
+        .when()
+                .get("/api/v1/assessments/" + id)
+        .then()
+                .statusCode(404);
+    }
+
+    @Test
+    @Order(13)
+    void tamperedSnapshotIsRejected() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            ReportSnapshotEntity snap = ReportSnapshotEntity.findById(UUID.fromString(snapshotId));
+            assertNotNull(snap);
+            snap.htmlContent = snap.htmlContent + "<!--tamper-->";
+        });
+
+        given()
+                .header("X-User", "tester")
+                .header("X-Roles", "VIEWER")
+        .when()
+                .get("/api/v1/assessments/" + assessmentId + "/reports/" + snapshotId + "/html")
+        .then()
+                .statusCode(409)
+                .body("detail", containsString("adulterado"));
+    }
+
+    private static String rehashedWithRoot(String json, String rootName) throws Exception {
+        AnalysisDocument doc = new ObjectMapper().readValue(json, AnalysisDocument.class);
+        AnalysisDocument mutated = new AnalysisDocument(
+                doc.schemaVersion(),
+                doc.analyzerVersion(),
+                doc.generatedAt(),
+                doc.durationMs(),
+                doc.contentHash(),
+                new AnalysisDocument.Project(
+                        rootName,
+                        doc.project().buildSystems(),
+                        doc.project().languages(),
+                        doc.project().javaVersionHint()),
+                doc.inventory(),
+                doc.signals(),
+                doc.dependencies(),
+                doc.hotspots(),
+                doc.cycles(),
+                doc.secrets(),
+                doc.evidences(),
+                doc.metrics()
+        );
+        return ContentHashVerifier.writeWithHash(mutated);
     }
 }

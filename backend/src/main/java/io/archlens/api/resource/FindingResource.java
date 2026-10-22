@@ -48,16 +48,31 @@ public class FindingResource {
     public Response exportCsv(@PathParam("assessmentId") UUID assessmentId) {
         List<FindingResponse> findings = findingService.list(assessmentId);
         StreamingOutput stream = out -> {
-            out.write("ruleId,title,severity,status,evidenceIds\n".getBytes(StandardCharsets.UTF_8));
+            out.write("ruleId,title,severity,status,certainty,origin,reviewedBy,reviewNote,evidenceIds\n"
+                .getBytes(StandardCharsets.UTF_8));
             for (FindingResponse f : findings) {
-                String line = String.format("%s,\"%s\",%s,%s,\"%s\"%n",
-                        f.ruleId(), f.title().replace("\"", "\"\""), f.severity(), f.status(),
-                        String.join(";", f.evidenceIds()));
+                String line = "%s,\"%s\",%s,%s,%s,%s,\"%s\",\"%s\",\"%s\"%n".formatted(
+                        f.ruleId(),
+                        csv(f.title()),
+                        f.severity(),
+                        f.status(),
+                        f.certainty(),
+                        f.origin(),
+                        csv(f.reviewedBy()),
+                        csv(f.reviewNote()),
+                        csv(String.join(";", f.evidenceIds())));
                 out.write(line.getBytes(StandardCharsets.UTF_8));
             }
         };
         return Response.ok(stream)
                 .header("Content-Disposition", "attachment; filename=\"findings.csv\"")
                 .build();
+    }
+
+    private static String csv(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\"", "\"\"").replace('\r', ' ').replace('\n', ' ');
     }
 }

@@ -55,13 +55,17 @@ public final class ProjectAnalyzer {
     }
 
     public static AnalysisDocument analyze(Path projectRoot) throws IOException {
+        return analyze(projectRoot, WalkLimits.DEFAULT);
+    }
+
+    public static AnalysisDocument analyze(Path projectRoot, WalkLimits limits) throws IOException {
         long started = System.nanoTime();
         Path root = projectRoot.toAbsolutePath().normalize();
         if (!Files.isDirectory(root)) {
             throw new IOException("Project path is not a directory: " + root);
         }
 
-        SafeFileWalker.WalkResult walk = SafeFileWalker.walk(root, path -> true, WalkLimits.DEFAULT);
+        SafeFileWalker.WalkResult walk = SafeFileWalker.walk(root, path -> true, limits);
         List<Path> allFiles = walk.files();
         List<Path> javaFiles = allFiles.stream()
                 .filter(path -> path.getFileName().toString().endsWith(".java"))
@@ -134,8 +138,7 @@ public final class ProjectAnalyzer {
         for (Path file : allFiles) {
             String relative = SafeFileWalker.toRelative(root, file);
             String name = file.getFileName().toString().toLowerCase(Locale.ROOT);
-            if (name.endsWith(".properties") || name.endsWith(".yml") || name.endsWith(".yaml")
-                    || name.endsWith(".xml") || name.endsWith(".env") || name.endsWith(".json")) {
+            if (isSecretCandidate(name)) {
                 String content = readText(file);
                 for (SecretDetector.SecretFinding finding : SecretDetector.detect(relative, content)) {
                     secrets.add(finding.secret());
@@ -215,6 +218,8 @@ public final class ProjectAnalyzer {
         addBuildSignals(buildSystems, evidenceById, signals);
         addInsufficientTestsSignal(javaFiles.size(), testFileCount, evidenceById, signals);
         signals.sort(Comparator.comparing(Signal::id));
+        signals.addAll(walkDiagnostics(walk.diagnostics(), evidenceById));
+        signals.sort(Comparator.comparing(Signal::id));
 
         List<Cycle> cycles = detectCycles(packageImports, packageToFiles, evidenceById);
 
@@ -266,6 +271,38 @@ public final class ProjectAnalyzer {
         );
 
         return AnalysisJson.withHash(draft);
+    }
+
+    private static boolean isSecretCandidate(String name) {
+        return name.endsWith(".properties")
+                || name.endsWith(".yml")
+                || name.endsWith(".yaml")
+                || name.endsWith(".xml")
+                || name.endsWith(".env")
+                || name.endsWith(".json")
+                || name.endsWith(".sh")
+                || name.endsWith(".bash")
+                || name.endsWith(".conf")
+                || name.endsWith(".cfg");
+    }
+
+    private static List<Signal> walkDiagnostics(List<String> diagnostics, Map<String, Evidence> evidenceById) {
+        List<Signal> signals = new ArrayList<>();
+        int index = 0;
+        for (String diagnostic : diagnostics) {
+            String safe = diagnostic == null ? "" : diagnostic.replace('\n', ' ').trim();
+            if (safe.isEmpty()) {
+                continue;
+            }
+            if (safe.length() > 180) {
+                safe = safe.substring(0, 180);
+            }
+            String id = "walk.diagnostic." + index++;
+            String evidenceId = "walk:" + id;
+            evidenceById.putIfAbsent(evidenceId, EvidenceFactory.patternEvidence(evidenceId, ".", "walk", id));
+            signals.add(new Signal(id, "OTHER", safe, "HIGH", List.of(evidenceId)));
+        }
+        return signals;
     }
 
     private static String readText(Path file) throws IOException {

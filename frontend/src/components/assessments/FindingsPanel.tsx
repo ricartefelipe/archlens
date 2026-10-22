@@ -196,6 +196,13 @@ export function FindingsPanel({
                   <td className="px-4 py-3">
                     <p className="font-medium text-slate-900">{finding.title}</p>
                     <p className="mt-1 text-xs text-slate-500">{finding.ruleId}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {finding.certainty === "STRUCTURAL" ? "Estrutural" : "Heurístico"}
+                      {" · "}
+                      {finding.reviewedBy
+                        ? `Revisado por ${finding.reviewedBy}`
+                        : "Aguardando revisão do arquiteto"}
+                    </p>
                     <p className="mt-2 text-slate-600">{finding.description}</p>
                     {finding.evidence ? (
                       <p className="mt-2 text-xs text-slate-500">

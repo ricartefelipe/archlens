@@ -11,6 +11,7 @@ import {
   publishReport as apiPublishReport,
   downloadReport as apiDownloadReport,
   exportFindingsCsv as apiExportFindingsCsv,
+  eraseAssessment as apiEraseAssessment,
 } from "@/lib/api/assessments";
 import { ApiClientError } from "@/lib/api/client";
 import { validateAnalysisFile } from "@/lib/upload/validateAnalysisFile";
@@ -20,6 +21,7 @@ import type {
   RoadmapItem,
   UpdateFindingStatusRequest,
 } from "@/types";
+import { redirect } from "next/navigation";
 
 async function sessionAuth() {
   const ctx = await getSessionContext();
@@ -158,6 +160,23 @@ export async function downloadReportAction(
   } catch (err) {
     rethrow(err);
   }
+}
+
+export async function eraseAssessmentAction(formData: FormData): Promise<void> {
+  const assessmentId = String(formData.get("assessmentId") ?? "");
+  if (!assessmentId) {
+    throw new Error("Avaliação não informada.");
+  }
+  try {
+    const auth = await sessionAuth();
+    if (!auth.roles?.includes("ADMIN")) {
+      throw new Error("Somente o perfil ADMIN pode retirar os dados da avaliação.");
+    }
+    await apiEraseAssessment(assessmentId, auth);
+  } catch (err) {
+    rethrow(err);
+  }
+  redirect("/assessments");
 }
 
 export async function exportFindingsCsvAction(

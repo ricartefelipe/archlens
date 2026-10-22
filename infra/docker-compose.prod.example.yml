@@ -33,6 +33,8 @@ services:
   frontend:
     environment:
       AUTH_LOCAL_ENABLED: "false"
+      ARCHLENS_ALLOW_DEMO_CREDENTIALS: "false"
+      ARCHLENS_PROFILE_LABEL: production
       AUTH_SECRET: ${AUTH_SECRET:?set-auth-secret}
       NEXTAUTH_SECRET: ${AUTH_SECRET:?set-auth-secret}
       AUTH_URL: https://app.example.com

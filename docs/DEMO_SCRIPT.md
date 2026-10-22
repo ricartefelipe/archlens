@@ -33,20 +33,21 @@ Mostre o sample (estrutura Maven pequena) e diga que o analyzer roda **só leitu
 ## Minuto 1–2 — Análise offline
 
 Mostre `/tmp/analysis.json` (metadados, `contentHash`, secrets só com hash).  
-Reforce: o valor fictício do sample **não** aparece no JSON.
+Reforce: o valor fictício do sample **não** aparece no JSON.  
+Se alguém alterar o JSON e mantiver o hash antigo, a importação recusa (`contentHash` divergente).
 
 ## Minuto 2–3 — Login e import
 
-1. Login: `architect` / `architect123`
-2. Criar avaliação (nome livre)
+1. Login de demonstração: `architect` / `architect123` (só existe porque o Compose demo declara `ARCHLENS_ALLOW_DEMO_CREDENTIALS=true`; instalação de cliente não usa isso)
+2. Criar avaliação (nome livre; pode ter acento, por exemplo Modernização)
 3. Importar `/tmp/analysis.json`
 4. Confirmar “Importação concluída”
 
 ## Minuto 3–5 — Inventário e findings
 
-1. Inventário: módulos/dependências  
-2. Achados: abrir lista, apontar evidências  
-3. Revisar um finding → status **APPROVED** (revisão humana)
+1. Inventário: módulos e dependências
+2. Achados: severidade, evidência e se o achado é heurístico ou estrutural
+3. Revisar um finding → status **APPROVED** (isso é a revisão do arquiteto, não a detecção)
 
 ## Minuto 5–7 — Questionário, scores e roadmap
 
@@ -57,10 +58,12 @@ Reforce: o valor fictício do sample **não** aparece no JSON.
 ## Minuto 7–9 — Relatório e publicação
 
 1. Gerar relatório  
-2. Baixar HTML e PDF  
-3. **Publicar** snapshot  
-4. Mostrar que republicar fica bloqueado (imutabilidade)  
-5. Auditoria: eventos de import/revisão/publicação  
+2. Abrir HTML: seções **Detecção automatizada** e **Revisão do arquiteto**; frase com acento ("ação")
+3. Baixar PDF e mostrar o mesmo texto acentuado
+4. Gerar de novo (segunda versão) e **publicar** um snapshot
+5. Mostrar que republicar fica bloqueado
+6. Auditoria: import, revisão, publicação
+7. Se estiver como `admin`: "Retirar dados da avaliação" apaga o diagnóstico e redige a auditoria. Faça isso só num ensaio, não na avaliação que você acabou de apresentar.  
 
 ## Minuto 9–10 — Segurança e limites honestos
 

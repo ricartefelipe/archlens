@@ -22,11 +22,13 @@
 |---------|-----------|
 | `archlens_import_total{result=success}` | Importações bem-sucedidas |
 | `archlens_import_schema_failure_total` | Falhas de schema/parse |
+| `archlens_import_integrity_failure_total` | `contentHash` divergente |
 | `archlens_findings_generated_total` | Achados materializados no import |
 | `archlens_import_duration_seconds` | Duração do import |
 | `archlens_report_generated_total` | Relatórios gerados |
 | `archlens_report_duration_seconds` | Duração da geração |
 | `archlens_report_pdf_failure_total` | Falhas de PDF |
+| `archlens_report_integrity_failure_total` | HTML de snapshot não confere com o hash |
 | `archlens_oidc_failure_total` | Reservado para falhas OIDC |
 | `archlens_db_failure_total` | Reservado para falhas de DB |
 
@@ -47,8 +49,9 @@ OpenTelemetry **opcional / planejado** — não embutido como dependência obrig
 Sugestão ao conectar um Prometheus/Grafana já existente:
 
 1. **Alerta:** `rate(archlens_import_schema_failure_total[5m]) > 0` por vários minutos.
-2. **Alerta:** `rate(archlens_report_pdf_failure_total[15m]) > 0`.
-3. **Painel:** taxa de imports, p95 `archlens_import_duration_seconds`, contagem de findings.
-4. **Painel:** readiness do backend (probe HTTP `/q/health/ready`).
+2. **Alerta:** `rate(archlens_report_pdf_failure_total[15m]) > 0` ou `rate(archlens_report_integrity_failure_total[15m]) > 0`.
+3. **Alerta:** `rate(archlens_import_integrity_failure_total[15m]) > 0` (JSON adulterado ou hash reescrito).
+4. **Painel:** taxa de imports, p95 `archlens_import_duration_seconds`, contagem de findings.
+5. **Painel:** readiness do backend (probe HTTP `/q/health/ready`).
 
 Não há stack de métricas embutida no Compose além do endpoint Prometheus do Quarkus.
