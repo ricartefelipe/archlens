@@ -119,6 +119,14 @@ docker compose -f infra/docker-compose.yml exec -T postgres \
 
 Volume Compose: `pgdata` (ex.: `infra_pgdata` quando o projeto é `infra`). Reinício da stack preserva dados.
 
+O dump inclui avaliações, `raw_json`, HTML/PDF e a fila `blob_cleanup_task`. Restaure em um Postgres 16 vazio e suba o backend para o Liquibase reconhecer o changelog já aplicado.
+
+Ensaio de 22/10/2026, num projeto Compose descartável `archlens-closure` (não é o volume de outro produto): importação do fixture demo, geração de relatório, `pg_dump` e restore num segundo Postgres 16. A API apontada para a base restaurada devolveu a avaliação, 6 achados e os eventos de auditoria. Exclusão da avaliação não apaga a cópia que já estiver num backup. Com `ARCHLENS_RETAIN_AUDIT=true` (padrão), a trilha também permanece no banco de origem.
+
+Não use `down -v` no meio do ensaio, nem no projeto Compose de outra pessoa.
+
+Excluir uma avaliação (ADMIN, com confirmação na UI) remove inventário, achados, questionário, scores, roadmap, importações e o vínculo do relatório. O PDF deixa de ser baixável na hora. Se a limpeza do blob falhar, repita `POST /api/v1/maintenance/blob-cleanup`. Com retenção de auditoria, os eventos continuam em `GET /api/v1/audit`.
+
 ## Reinício controlado
 
 ```bash
@@ -137,8 +145,10 @@ docker compose -f infra/docker-compose.yml up -d --build --force-recreate
 | Login falha | Realm importado? Porta 8081 livre? `AUTH_LOCAL_ENABLED=true` no demo? |
 | Login E2E falha com `127.0.0.1` | Use `http://localhost:3000` (cookies/`NEXTAUTH_URL`) |
 | UI `fetch failed` / lista vazia no Compose | Confirme `ARCHLENS_API_INTERNAL_URL=http://backend:8080/api/v1` no serviço frontend |
-| Import 400 | JSON fora do schema — rode `validate`; API exige `Idempotency-Key` |
-| Import 409 | Troque `Idempotency-Key` ou reenvie o mesmo hash |
+| Import 400 | JSON fora do schema, ou `contentHash` divergente do algoritmo `archlens-content-hash/v1`. Rode `validate` e reenvie o arquivo gerado pelo CLI |
+| Import 409 | A mesma `Idempotency-Key` já foi usada com outro hash |
+| Exclusão não apaga o PDF na hora | A linha do snapshot fica órfã até `POST /api/v1/maintenance/blob-cleanup` (ADMIN). O download já responde 404 |
+| Exclusão 400 retenção | `ARCHLENS_LEGAL_HOLD=true` bloqueia o delete. Auditoria permanece se `ARCHLENS_RETAIN_AUDIT=true` (padrão) |
 | Import 429 | Rate limit — aguarde 1 minuto |
 | Liquibase lock | `UPDATE databasechangeloglock SET locked=false WHERE id=1;` (um único backend) |
 | VIEWER consegue escrever | Bug — reportar; em demo headers devem refletir papéis da sessão |

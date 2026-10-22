@@ -2,7 +2,7 @@
   "schemaVersion": "1.0.0",
   "analyzerVersion": "0.1.0-SNAPSHOT",
   "generatedAt": "2026-07-16T12:00:00Z",
-  "contentHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "contentHash": "sha256:5234e09c5b8beac153bde0d967c34d70f6b5ea562b0e25d4b44538c9afad6f30",
   "project": {
     "rootName": "legacy-java-demo",
     "buildSystems": [

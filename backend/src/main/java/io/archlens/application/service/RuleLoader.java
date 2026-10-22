@@ -17,15 +17,18 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 @ApplicationScoped
 public class RuleLoader {
 
     private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
     private List<RuleDefinition> rules = List.of();
+    private String rulesetVersion = "unknown";
 
     void onStart(@Observes StartupEvent event) {
         this.rules = loadAll();
+        this.rulesetVersion = loadRulesetVersion();
     }
 
     public List<RuleDefinition> getRules() {
@@ -34,6 +37,25 @@ public class RuleLoader {
 
     public int count() {
         return rules.size();
+    }
+
+    public String rulesetVersion() {
+        return rulesetVersion;
+    }
+
+    private String loadRulesetVersion() {
+        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+        try (InputStream in = classLoader.getResourceAsStream("rules/ruleset.properties")) {
+            if (in == null) {
+                return "unknown";
+            }
+            Properties properties = new Properties();
+            properties.load(in);
+            String version = properties.getProperty("version");
+            return version == null || version.isBlank() ? "unknown" : version.trim();
+        } catch (Exception ex) {
+            return "unknown";
+        }
     }
 
     @SuppressWarnings("unchecked")

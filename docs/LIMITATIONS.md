@@ -20,9 +20,11 @@
 
 ## SafeFileWalker
 
-- Não segue symlinks cujo alvo real está fora da raiz.
-- Ignora binários por extensão/conteúdo e diretórios padrão (`.git`, `target`, `build`, etc.).
-- Limites default: 2 MiB/arquivo, 50k arquivos, 200 MiB totais.
+- Não segue symlinks cujo alvo real está fora da raiz e não lê URL.
+- Ignora binários por extensão/conteúdo, diretórios de build e dependências vendorizadas (`vendor`, `third_party`, `node_modules`, `target`, `build`, etc.).
+- Não lê conteúdo de arquivos sensíveis (`.env`, `.pem`, `.p12`, chaves `id_rsa`, `credentials.json`); registra o caminho no diagnóstico.
+- Limites default: 2 MiB/arquivo, 50k arquivos, 200 MiB totais, profundidade 32, 60 s. Cancelamento cooperativo interrompe o caminhamento e lista o motivo.
+- Diagnósticos de arquivo/diretório ignorado saem no stderr do comando `scan` e não entram no `analysis.json`.
 
 ## Segredos
 

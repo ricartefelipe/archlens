@@ -212,3 +212,52 @@ databaseChangeLog:
               CREATE INDEX IF NOT EXISTS idx_inv_cycle_org_assessment ON inventory_cycle (organization_id, assessment_id);
               CREATE INDEX IF NOT EXISTS idx_inv_secret_org_assessment ON inventory_secret (organization_id, assessment_id);
               CREATE INDEX IF NOT EXISTS idx_inv_metrics_org_assessment ON inventory_metrics (organization_id, assessment_id);
+
+  - changeSet:
+      id: 003-import-hash-and-blob-cleanup
+      author: archlens
+      dbms: postgresql
+      changes:
+        - sql:
+            splitStatements: true
+            sql: |
+              DELETE FROM analysis_import a
+              WHERE EXISTS (
+                SELECT 1 FROM analysis_import b
+                WHERE b.organization_id = a.organization_id
+                  AND b.assessment_id = a.assessment_id
+                  AND b.content_hash = a.content_hash
+                  AND (b.imported_at < a.imported_at
+                    OR (b.imported_at = a.imported_at AND b.id < a.id))
+              );
+              CREATE UNIQUE INDEX IF NOT EXISTS uk_import_org_assessment_hash
+                ON analysis_import (organization_id, assessment_id, content_hash);
+
+              CREATE TABLE IF NOT EXISTS import_idempotency_alias (
+                id UUID PRIMARY KEY,
+                organization_id UUID NOT NULL,
+                assessment_id UUID NOT NULL,
+                idempotency_key VARCHAR(128) NOT NULL,
+                import_id UUID NOT NULL REFERENCES analysis_import(id) ON DELETE CASCADE,
+                CONSTRAINT uk_import_alias UNIQUE (organization_id, assessment_id, idempotency_key)
+              );
+
+              CREATE TABLE IF NOT EXISTS blob_cleanup_task (
+                id UUID PRIMARY KEY,
+                organization_id UUID NOT NULL REFERENCES organization(id),
+                assessment_id UUID NOT NULL,
+                snapshot_id UUID NOT NULL,
+                status VARCHAR(16) NOT NULL,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                last_error TEXT,
+                created_at TIMESTAMPTZ NOT NULL,
+                updated_at TIMESTAMPTZ NOT NULL
+              );
+              CREATE INDEX IF NOT EXISTS idx_blob_cleanup_status
+                ON blob_cleanup_task (status, created_at);
+
+              ALTER TABLE report_snapshot DROP CONSTRAINT IF EXISTS report_snapshot_assessment_id_fkey;
+              ALTER TABLE report_snapshot ALTER COLUMN assessment_id DROP NOT NULL;
+              ALTER TABLE report_snapshot
+                ADD CONSTRAINT report_snapshot_assessment_id_fkey
+                FOREIGN KEY (assessment_id) REFERENCES assessment(id) ON DELETE SET NULL;

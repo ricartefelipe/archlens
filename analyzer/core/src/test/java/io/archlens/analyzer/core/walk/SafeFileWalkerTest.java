@@ -103,6 +103,31 @@ class SafeFileWalkerTest {
     }
 
     @Test
+    void reportsIgnoredVendorDirsSensitiveFilesDepthAndCancellation() throws Exception {
+        Files.createDirectories(tempDir.resolve("vendor/lib"));
+        Files.writeString(tempDir.resolve("vendor/lib/Vendored.java"), "class Vendored {}");
+        Files.writeString(tempDir.resolve("secret.pem"), "not-a-real-key");
+        Files.writeString(tempDir.resolve("keep.java"), "class Keep {}");
+        Files.createDirectories(tempDir.resolve("a/b/c"));
+        Files.writeString(tempDir.resolve("a/b/c/Deep.java"), "class Deep {}");
+
+        WalkLimits shallow = new WalkLimits(2_000_000L, 100, 10_000_000L, 1, 60_000L, Set.of());
+        SafeFileWalker.WalkResult shallowResult = SafeFileWalker.walk(tempDir, path -> true, shallow);
+        List<String> relatives = shallowResult.files().stream().map(p -> SafeFileWalker.toRelative(tempDir, p)).toList();
+        assertTrue(relatives.contains("keep.java"));
+        assertFalse(relatives.stream().anyMatch(path -> path.contains("Vendored") || path.contains("Deep") || path.endsWith(".pem")));
+        assertTrue(shallowResult.diagnostics().stream().anyMatch(item -> item.contains("Diretório ignorado") && item.contains("vendor")));
+        assertTrue(shallowResult.diagnostics().stream().anyMatch(item -> item.contains("sensível") && item.contains("secret.pem")));
+        assertTrue(shallowResult.diagnostics().stream().anyMatch(item -> item.contains("Profundidade máxima")));
+
+        WalkControl control = new WalkControl();
+        control.cancel();
+        SafeFileWalker.WalkResult cancelled = SafeFileWalker.walk(tempDir, path -> true, WalkLimits.DEFAULT, control);
+        assertTrue(cancelled.files().isEmpty());
+        assertTrue(cancelled.diagnostics().stream().anyMatch(item -> item.toLowerCase().contains("cancelad")));
+    }
+
+    @Test
     void pathTraversalRejectedOnRelativize() {
         Path root = tempDir.toAbsolutePath().normalize();
         Path outside = root.getParent().resolve("outside.txt");

@@ -46,7 +46,7 @@ Detalhes e limpeza de órfãos do Desktop: [RUNBOOK](docs/RUNBOOK.md).
 
 **Usuários fictícios (demo):** `admin`/`admin123`, `architect`/`architect123`, `viewer`/`viewer123`
 
-O backend no Compose usa perfil **`demo`** (auth por headers). Produção exige perfil `%prod` + secrets reais — ver [ENVIRONMENTS](docs/ENVIRONMENTS.md).
+O backend no Compose usa perfil **`demo`** (auth por headers). Instalação do operador na própria máquina usa perfil **`local`**. Produção exige perfil `%prod` + secrets reais — ver [ENVIRONMENTS](docs/ENVIRONMENTS.md). Headers `X-User` / `X-Roles` / `X-Organization-Id` são ignorados em produção.
 
 ### Analisar o sample (offline)
 
@@ -95,4 +95,4 @@ Equivalente local: `bash scripts/ci-local.sh`
 
 ## Licença
 
-Uso interno / MVP — definir licença antes de distribuição pública.
+A licença de distribuição **ainda não foi escolhida** pelo proprietário. Não há cessão de direitos neste repositório. Inventário e uma proposta para decisão estão em [LICENSE_INVENTORY](docs/LICENSE_INVENTORY.md) e [COMMERCIAL_TERMS_PROPOSAL](docs/COMMERCIAL_TERMS_PROPOSAL.md). Posicionamento da oferta: [COMMERCIAL_READINESS](docs/COMMERCIAL_READINESS.md). Fechamento desta revisão: [CLOSURE_REPORT](docs/CLOSURE_REPORT.md).

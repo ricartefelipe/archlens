@@ -19,6 +19,8 @@
 
 ## Conteúdo canônico (hash)
 
+Algoritmo versionado: `archlens-content-hash/v1` (analyzer e backend usam a mesma regra).
+
 O `contentHash` é calculado sobre o JSON serializado com propriedades ordenadas, **excluindo**:
 
 - `generatedAt`
@@ -26,6 +28,8 @@ O `contentHash` é calculado sobre o JSON serializado com propriedades ordenadas
 - `contentHash`
 
 Duas análises do mesmo conteúdo de projeto (mesmos arquivos relevantes) devem produzir o mesmo `contentHash`.
+
+Na importação o backend **recalcula** o hash e rejeita divergência com o valor declarado. A unicidade é `(organização, avaliação, contentHash)`: o mesmo artefato não gera outra importação; outra avaliação ou outra organização não reaproveita a linha. SHA-256 aqui confere integridade do JSON contra alteração acidental ou troca do campo `contentHash`. Não autentica a origem: quem consegue alterar o arquivo também consegue recalcular o hash.
 
 Coleções são ordenadas antes da serialização (sinais, deps, evidências, etc.).
 

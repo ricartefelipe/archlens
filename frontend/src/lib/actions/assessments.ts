@@ -1,8 +1,10 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { getSessionContext } from "@/lib/auth/session";
 import {
   createAssessment as apiCreateAssessment,
+  deleteAssessment as apiDeleteAssessment,
   saveQuestionnaire as apiSaveQuestionnaire,
   saveRoadmap as apiSaveRoadmap,
   updateFindingStatus as apiUpdateFindingStatus,
@@ -158,6 +160,16 @@ export async function downloadReportAction(
   } catch (err) {
     rethrow(err);
   }
+}
+
+export async function deleteAssessmentAction(id: string): Promise<void> {
+  try {
+    const auth = await sessionAuth();
+    await apiDeleteAssessment(id, auth);
+  } catch (err) {
+    rethrow(err);
+  }
+  redirect("/assessments");
 }
 
 export async function exportFindingsCsvAction(

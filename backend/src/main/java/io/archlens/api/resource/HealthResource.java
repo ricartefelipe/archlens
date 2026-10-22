@@ -29,6 +29,7 @@ public class HealthResource {
         return Map.of(
                 "status", "UP",
                 "rulesLoaded", ruleLoader.count(),
+                "rulesetVersion", ruleLoader.rulesetVersion(),
                 "profile", profileLabel,
                 "localHeaderAuth", localHeaderAuth
         );

@@ -12,9 +12,9 @@ import io.archlens.domain.FindingStatus;
 import io.archlens.infrastructure.observability.ArchLensMetrics;
 import io.archlens.infrastructure.persistence.*;
 import io.archlens.infrastructure.security.IdentityService;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -61,8 +61,34 @@ public class AnalysisImportService {
 
     public record ImportResult(AnalysisImportEntity entity, int findingsCount) {}
 
-    @Transactional
     public ImportResult importAnalysis(UUID assessmentId, String idempotencyKey, String rawJson) {
+        try {
+            return QuarkusTransaction.requiringNew().call(() -> importInTransaction(assessmentId, idempotencyKey, rawJson));
+        } catch (RuntimeException ex) {
+            if (!isUniqueViolation(ex)) {
+                throw ex;
+            }
+            RuntimeException last = ex;
+            for (int attempt = 0; attempt < 3; attempt++) {
+                try {
+                    ImportResult replay = QuarkusTransaction.requiringNew()
+                            .call(() -> replayAfterConstraint(assessmentId, idempotencyKey, rawJson));
+                    if (replay != null) {
+                        return replay;
+                    }
+                    break;
+                } catch (RuntimeException replayEx) {
+                    last = replayEx;
+                    if (!isUniqueViolation(replayEx)) {
+                        throw replayEx;
+                    }
+                }
+            }
+            throw last;
+        }
+    }
+
+    ImportResult importInTransaction(UUID assessmentId, String idempotencyKey, String rawJson) {
         long started = System.currentTimeMillis();
         identityService.requireWrite();
         var org = organizationService.getOrganization();
@@ -101,14 +127,28 @@ public class AnalysisImportService {
             throw new BusinessException("Falha ao interpretar analysis.json");
         }
 
-        AnalysisImportEntity existing = AnalysisImportEntity.findByIdempotency(org.id, assessmentId, idempotencyKey);
+        String computedHash = CanonicalContentHash.compute(rawJson);
+        if (doc.contentHash() == null || !computedHash.equals(doc.contentHash())) {
+            metrics.recordImportSchemaFailure();
+            throw new BusinessException(
+                    "contentHash divergente do conteúdo canônico (" + CanonicalContentHash.ALGORITHM + ")");
+        }
+
+        AnalysisImportEntity existing = findByKeyOrAlias(org.id, assessmentId, idempotencyKey);
         if (existing != null) {
-            if (!existing.contentHash.equals(doc.contentHash())) {
+            if (!existing.contentHash.equals(computedHash)) {
                 throw new ConflictException(
                         "Idempotency-Key já usada com payload diferente (contentHash diverge)");
             }
             int count = FindingEntity.listByOrgAndAssessment(org.id, assessmentId).size();
             return new ImportResult(existing, count);
+        }
+
+        AnalysisImportEntity sameArtifact = AnalysisImportEntity.findByContentHash(org.id, assessmentId, computedHash);
+        if (sameArtifact != null) {
+            rememberKey(org.id, assessmentId, idempotencyKey, sameArtifact.id);
+            int count = FindingEntity.listByOrgAndAssessment(org.id, assessmentId).size();
+            return new ImportResult(sameArtifact, count);
         }
 
         materializer.materialize(org.id, assessmentId, doc);
@@ -124,27 +164,95 @@ public class AnalysisImportService {
         imp.organizationId = org.id;
         imp.assessmentId = assessmentId;
         imp.idempotencyKey = idempotencyKey;
-        imp.contentHash = doc.contentHash();
+        imp.contentHash = computedHash;
         imp.schemaVersion = doc.schemaVersion();
         imp.analyzerVersion = doc.analyzerVersion();
         // raw_json: apenas analysis.json (sem fonte). Política: tamanho limitado; retenção para auditoria de import.
         imp.rawJson = rawJson;
         imp.importedAt = Instant.now();
         imp.persist();
+        AnalysisImportEntity.getEntityManager().flush();
 
         assessment.status = AssessmentStatus.IMPORTED;
         assessment.projectRootName = doc.project() != null ? doc.project().rootName() : null;
         assessment.updatedAt = Instant.now();
 
         auditService.record(org.id, assessmentId, AuditAction.ANALYSIS_IMPORTED, actor,
-                "Importação concluída com " + persisted.size() + " achados; hash=" + doc.contentHash());
+                "Importação concluída com " + persisted.size() + " achados; hash=" + computedHash
+                        + "; algoritmo=" + CanonicalContentHash.ALGORITHM);
 
         long elapsed = System.currentTimeMillis() - started;
         metrics.recordImportSuccess(persisted.size(), elapsed);
         LOG.infof("Importação OK assessmentId=%s findings=%d durationMs=%d hash=%s",
-                assessmentId, persisted.size(), elapsed, doc.contentHash());
+                assessmentId, persisted.size(), elapsed, computedHash);
 
         return new ImportResult(imp, persisted.size());
+    }
+
+    private ImportResult replayAfterConstraint(UUID assessmentId, String idempotencyKey, String rawJson) {
+        identityService.requireWrite();
+        var org = organizationService.getOrganization();
+        String computedHash = CanonicalContentHash.compute(rawJson);
+        AnalysisImportEntity byKey = findByKeyOrAlias(org.id, assessmentId, idempotencyKey);
+        if (byKey != null) {
+            if (!computedHash.equals(byKey.contentHash)) {
+                throw new ConflictException(
+                        "Idempotency-Key já usada com payload diferente (contentHash diverge)");
+            }
+            int count = FindingEntity.listByOrgAndAssessment(org.id, assessmentId).size();
+            return new ImportResult(byKey, count);
+        }
+        AnalysisImportEntity byHash = AnalysisImportEntity.findByContentHash(org.id, assessmentId, computedHash);
+        if (byHash == null) {
+            return null;
+        }
+        rememberKey(org.id, assessmentId, idempotencyKey, byHash.id);
+        int count = FindingEntity.listByOrgAndAssessment(org.id, assessmentId).size();
+        return new ImportResult(byHash, count);
+    }
+
+    private AnalysisImportEntity findByKeyOrAlias(UUID orgId, UUID assessmentId, String idempotencyKey) {
+        AnalysisImportEntity direct = AnalysisImportEntity.findByIdempotency(orgId, assessmentId, idempotencyKey);
+        if (direct != null) {
+            return direct;
+        }
+        ImportIdempotencyAliasEntity alias = ImportIdempotencyAliasEntity.findKey(orgId, assessmentId, idempotencyKey);
+        if (alias == null) {
+            return null;
+        }
+        return AnalysisImportEntity.findById(alias.importId);
+    }
+
+    private void rememberKey(UUID orgId, UUID assessmentId, String idempotencyKey, UUID importId) {
+        if (ImportIdempotencyAliasEntity.findKey(orgId, assessmentId, idempotencyKey) != null) {
+            return;
+        }
+        ImportIdempotencyAliasEntity alias = new ImportIdempotencyAliasEntity();
+        alias.id = UUID.randomUUID();
+        alias.organizationId = orgId;
+        alias.assessmentId = assessmentId;
+        alias.idempotencyKey = idempotencyKey;
+        alias.importId = importId;
+        alias.persist();
+        ImportIdempotencyAliasEntity.getEntityManager().flush();
+    }
+
+    static boolean isUniqueViolation(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            String type = current.getClass().getName();
+            if (type.contains("ConstraintViolation")) {
+                return true;
+            }
+            String message = current.getMessage();
+            if (message != null && (message.contains("uk_import_org_assessment_hash")
+                    || message.contains("uk_import_idempotency")
+                    || message.contains("uk_import_alias"))) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private void mergeFindings(UUID orgId, UUID assessmentId, List<FindingEntity> evaluated) {
