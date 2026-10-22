@@ -16,7 +16,9 @@ export async function getSessionContext(): Promise<{
   return {
     accessToken: session?.accessToken,
     roles: session?.roles ?? ["VIEWER"],
-    userName,
+    // Nunca rebaixar uma sessão OIDC para identidade por headers locais.
+    // Só sessões provenientes do provedor Credentials local podem usar X-User.
+    userName: session?.authProvider === "local" ? userName : undefined,
     userEmail: session?.user?.email,
   };
 }

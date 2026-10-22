@@ -10,6 +10,8 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.archlens.analyzer.core.hash.HashUtil;
 import io.archlens.analyzer.core.model.AnalysisDocument;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -32,8 +34,23 @@ public final class AnalysisJson {
     /**
      * Hash canônico do conteúdo estável: exclui {@code generatedAt}, {@code durationMs} e {@code contentHash}.
      */
+    /**
+     * Algoritmo {@code archlens-content-hash/v1}: JSON com chaves ordenadas,
+     * omissão de nulos, sem {@code generatedAt}, {@code durationMs} e {@code contentHash}.
+     */
+    public static final String CONTENT_HASH_ALGORITHM = "archlens-content-hash/v1";
+
     public static String computeContentHash(AnalysisDocument document) throws JsonProcessingException {
         Map<String, Object> payload = MAPPER.convertValue(document, Map.class);
+        return hashPayload(payload);
+    }
+
+    public static String computeContentHashFromJson(String rawJson) throws JsonProcessingException {
+        Map<String, Object> payload = MAPPER.readValue(rawJson, new TypeReference<LinkedHashMap<String, Object>>() {});
+        return hashPayload(payload);
+    }
+
+    private static String hashPayload(Map<String, Object> payload) throws JsonProcessingException {
         payload.remove("generatedAt");
         payload.remove("durationMs");
         payload.remove("contentHash");

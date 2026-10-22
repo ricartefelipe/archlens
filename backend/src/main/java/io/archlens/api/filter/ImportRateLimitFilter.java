@@ -1,5 +1,8 @@
 package io.archlens.api.filter;
 
+import io.vertx.ext.web.RoutingContext;
+import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.core.Response;
@@ -22,6 +25,15 @@ public class ImportRateLimitFilter implements ContainerRequestFilter {
     @ConfigProperty(name = "archlens.rate-limit.import-per-minute", defaultValue = "30")
     int limitPerMinute;
 
+    @ConfigProperty(name = "archlens.rate-limit.trust-forwarded", defaultValue = "false")
+    boolean trustForwarded;
+
+    @ConfigProperty(name = "archlens.local-header-auth.enabled", defaultValue = "false")
+    boolean localHeaderAuth;
+
+    @Inject
+    Instance<RoutingContext> routingContext;
+
     private final Map<String, Deque<Long>> windows = new ConcurrentHashMap<>();
 
     @Override
@@ -35,7 +47,12 @@ public class ImportRateLimitFilter implements ContainerRequestFilter {
             return;
         }
         int limit = limitPerMinute <= 0 ? Integer.MAX_VALUE : limitPerMinute;
-        String key = clientKey(requestContext);
+        String key = clientKey(
+                trustForwarded,
+                requestContext.getHeaderString("X-Forwarded-For"),
+                localHeaderAuth,
+                requestContext.getHeaderString("X-User"),
+                remoteHost());
         long now = Instant.now().toEpochMilli();
         long cutoff = now - 60_000L;
         Deque<Long> hits = windows.computeIfAbsent(key, k -> new ArrayDeque<>());
@@ -57,13 +74,25 @@ public class ImportRateLimitFilter implements ContainerRequestFilter {
         }
     }
 
-    private static String clientKey(ContainerRequestContext ctx) {
-        String forwarded = ctx.getHeaderString("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
+    private String remoteHost() {
+        if (routingContext == null || !routingContext.isResolvable()) {
+            return null;
         }
-        String user = ctx.getHeaderString("X-User");
-        if (user != null && !user.isBlank()) {
+        RoutingContext current = routingContext.get();
+        if (current == null || current.request() == null || current.request().remoteAddress() == null) {
+            return null;
+        }
+        return current.request().remoteAddress().host();
+    }
+
+    public static String clientKey(boolean trustForwarded, String forwarded, boolean localHeaderAuth, String user, String remoteHost) {
+        if (trustForwarded && forwarded != null && !forwarded.isBlank()) {
+            return "fwd:" + forwarded.split(",")[0].trim();
+        }
+        if (remoteHost != null && !remoteHost.isBlank()) {
+            return "ip:" + remoteHost;
+        }
+        if (localHeaderAuth && user != null && !user.isBlank()) {
             return "user:" + user;
         }
         return "anonymous";

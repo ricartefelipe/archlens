@@ -28,8 +28,11 @@ public class IdentityService {
     @ConfigProperty(name = "archlens.local-header-auth.enabled", defaultValue = "false")
     boolean localHeaderAuth;
 
+    @ConfigProperty(name = "archlens.profile.label", defaultValue = "unspecified")
+    String profileLabel;
+
     public ArchLensIdentity current() {
-        if (localHeaderAuth) {
+        if (HeaderIdentityPolicy.headerIdentityAllowed(localHeaderAuth, profileLabel)) {
             String user = Optional.ofNullable(headers.getHeaderString("X-User")).orElse("dev-user");
             String rolesHeader = Optional.ofNullable(headers.getHeaderString("X-Roles")).orElse("ADMIN");
             Set<UserRole> roles = parseRoles(rolesHeader);

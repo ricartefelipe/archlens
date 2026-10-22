@@ -3,10 +3,16 @@
 **/.next/
 **/out/
 **/dist/
-**/build/
 **/.gradle/
 **/node_modules/
 **/.turbo/
+
+# Saída Gradle (diretório build na raiz de módulo). Não usar **/build/:
+# esse padrão também esconde o pacote Java io.archlens.analyzer.core.build.
+/build/
+/*/build/
+/*/*/build/
+/*/*/*/build/
 
 # IDE
 .idea/

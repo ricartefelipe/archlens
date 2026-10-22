@@ -162,7 +162,9 @@ public class ReportService {
         sb.append("<style>body{font-family:Segoe UI,Arial,sans-serif;margin:40px;color:#1a1a2e}");
         sb.append("h1,h2{color:#16213e}table{border-collapse:collapse;width:100%;margin:16px 0}");
         sb.append("th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background:#e8eef5}");
-        sb.append(".meta{color:#555;font-size:0.95em}.note{background:#f7f7f7;padding:12px;border-left:4px solid #888}</style></head><body>");
+        sb.append("td{word-wrap:break-word}");
+        sb.append(".meta{color:#555;font-size:0.95em}.note{background:#f7f7f7;padding:12px;border-left:4px solid #888}");
+        sb.append("@media print{body{margin:12mm}a{color:#000;text-decoration:none}h2{page-break-after:avoid}}</style></head><body>");
         sb.append("<h1>Relatório ArchLens</h1>");
         sb.append("<p class=\"meta\"><strong>Avaliação:</strong> ").append(escape(assessment.name)).append("</p>");
         sb.append("<p class=\"meta\"><strong>Escopo:</strong> ")
@@ -177,6 +179,26 @@ public class ReportService {
         }
 
         sb.append("<h2>Resumo executivo</h2><p>").append(escape(summary)).append("</p>");
+        sb.append("<p class=\"note\">O resumo é apoio à leitura. Achados abaixo são candidatos heurísticos, não falhas comprovadas.</p>");
+
+        sb.append("<h2>Diagnóstico técnico</h2>");
+        sb.append("<table><tr><th>Título</th><th>Severidade</th><th>Impacto na dimensão</th><th>Status</th><th>Evidências</th></tr>");
+        for (var f : findings) {
+            sb.append("<tr><td>").append(escape(f.title)).append("</td><td>")
+                    .append(escape(f.severity.name())).append("</td><td>")
+                    .append(f.dimensionKey == null ? "" : escape(f.dimensionKey.name())).append("</td><td>")
+                    .append(escape(f.status.name())).append("</td><td>")
+                    .append(escape(f.evidenceIds)).append("</td></tr>");
+        }
+        sb.append("</table>");
+
+        sb.append("<h2>Trilha de evidências</h2><ul>");
+        for (var f : findings) {
+            sb.append("<li>").append(escape(f.ruleId)).append(": ")
+                    .append(escape(f.evidenceIds)).append("</li>");
+        }
+        sb.append("</ul>");
+        sb.append("<h2>Incerteza</h2><p class=\"note\">Sinais e regras são heurísticos. A severidade indica prioridade de revisão, não exploração demonstrada. Esforço e impacto das opções de modernização são estimativas humanas.</p>");
 
         sb.append("<h2>Inventário (resumo)</h2><table><tr><th>Módulo</th><th>Build</th><th>Path</th></tr>");
         for (InventoryModuleEntity m : modules) {
@@ -203,7 +225,7 @@ public class ReportService {
         }
         sb.append("</table>");
 
-        sb.append("<h2>Achados revisados</h2><table><tr><th>Regra</th><th>Severidade</th><th>Status</th><th>Nota</th></tr>");
+        sb.append("<h2>Achados candidatos à revisão</h2><table><tr><th>Regra</th><th>Severidade</th><th>Status</th><th>Nota</th></tr>");
         for (var f : findings) {
             sb.append("<tr><td>").append(escape(f.title)).append("</td><td>")
                     .append(escape(f.severity.name())).append("</td><td>")

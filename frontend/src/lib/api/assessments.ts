@@ -132,6 +132,16 @@ export async function createAssessment(
   return mapAssessment(created);
 }
 
+export async function deleteAssessment(
+  id: string,
+  auth?: AuthContext,
+): Promise<void> {
+  await apiFetch<void>(`/assessments/${id}`, {
+    method: "DELETE",
+    ...authHeaders(auth),
+  });
+}
+
 export async function getAssessment(
   id: string,
   auth?: AuthContext,

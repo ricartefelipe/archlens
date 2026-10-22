@@ -1,12 +1,14 @@
 package io.archlens.application.service;
 
 import io.archlens.infrastructure.persistence.OrganizationEntity;
+import io.archlens.infrastructure.security.HeaderIdentityPolicy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.HttpHeaders;
 import java.util.Optional;
 import java.util.UUID;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
  * Resolução da organização corrente.
@@ -21,8 +23,13 @@ public class OrganizationService {
     @Context
     HttpHeaders headers;
 
+    @ConfigProperty(name = "archlens.profile.label", defaultValue = "unspecified")
+    String profileLabel;
+
     public OrganizationEntity getOrganization() {
-        Optional<UUID> headerOrg = resolveHeaderOrgId();
+        Optional<UUID> headerOrg = HeaderIdentityPolicy.organizationHeaderTrusted(profileLabel)
+                ? resolveHeaderOrgId()
+                : Optional.empty();
         if (headerOrg.isPresent()) {
             OrganizationEntity org = OrganizationEntity.findById(headerOrg.get());
             if (org == null) {

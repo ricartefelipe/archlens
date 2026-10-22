@@ -32,4 +32,9 @@ public class AnalysisImportEntity extends PanacheEntityBase {
         return find("organizationId = ?1 and assessmentId = ?2 and idempotencyKey = ?3",
                 orgId, assessmentId, key).firstResult();
     }
+
+    public static AnalysisImportEntity findByContentHash(UUID orgId, UUID assessmentId, String contentHash) {
+        return find("organizationId = ?1 and assessmentId = ?2 and contentHash = ?3",
+                orgId, assessmentId, contentHash).firstResult();
+    }
 }

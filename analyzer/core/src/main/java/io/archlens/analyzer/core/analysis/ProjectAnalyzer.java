@@ -2,6 +2,7 @@ package io.archlens.analyzer.core.analysis;
 
 import io.archlens.analyzer.core.build.GradleBuildParser;
 import io.archlens.analyzer.core.build.MavenPomParser;
+import io.archlens.analyzer.core.build.ParseLimitation;
 import io.archlens.analyzer.core.detection.CycleDetector;
 import io.archlens.analyzer.core.detection.SecretDetector;
 import io.archlens.analyzer.core.detection.SignalDetector;
@@ -25,6 +26,7 @@ import io.archlens.analyzer.core.model.Secret;
 import io.archlens.analyzer.core.model.Signal;
 import io.archlens.analyzer.core.model.TypeInfo;
 import io.archlens.analyzer.core.walk.SafeFileWalker;
+import io.archlens.analyzer.core.walk.WalkControl;
 import io.archlens.analyzer.core.walk.WalkLimits;
 
 import java.io.IOException;
@@ -54,14 +56,22 @@ public final class ProjectAnalyzer {
     private ProjectAnalyzer() {
     }
 
+    public record ScanOutcome(AnalysisDocument document, List<String> diagnostics) {
+    }
+
     public static AnalysisDocument analyze(Path projectRoot) throws IOException {
+        return analyze(projectRoot, WalkLimits.DEFAULT, null).document();
+    }
+
+    public static ScanOutcome analyze(Path projectRoot, WalkLimits limits, WalkControl control) throws IOException {
         long started = System.nanoTime();
         Path root = projectRoot.toAbsolutePath().normalize();
         if (!Files.isDirectory(root)) {
             throw new IOException("Project path is not a directory: " + root);
         }
 
-        SafeFileWalker.WalkResult walk = SafeFileWalker.walk(root, path -> true, WalkLimits.DEFAULT);
+        WalkLimits effectiveLimits = limits == null ? WalkLimits.DEFAULT : limits;
+        SafeFileWalker.WalkResult walk = SafeFileWalker.walk(root, path -> true, effectiveLimits, control);
         List<Path> allFiles = walk.files();
         List<Path> javaFiles = allFiles.stream()
                 .filter(path -> path.getFileName().toString().endsWith(".java"))
@@ -73,6 +83,7 @@ public final class ProjectAnalyzer {
         String javaVersionHint = null;
         Map<String, ModuleInfo> modulesByPath = new TreeMap<>();
         List<SignalDetector.DetectedSignal> detectedSignals = new ArrayList<>();
+        Map<String, LimitationAcc> limitations = new LinkedHashMap<>();
 
         for (Path file : allFiles) {
             String relative = SafeFileWalker.toRelative(root, file);
@@ -85,6 +96,7 @@ public final class ProjectAnalyzer {
                 MavenPomParser.PomParseResult pom = MavenPomParser.parse(content, relative);
                 dependencies.addAll(pom.dependencies());
                 javaVersionHint = firstNonNull(javaVersionHint, pom.javaVersionHint().orElse(null));
+                recordLimitations(relative, pom.limitations(), evidenceById, limitations);
                 modulesByPath.putIfAbsent(modulePath(relative), new ModuleInfo(moduleName(relative), modulePath(relative), "MAVEN"));
                 for (String module : pom.modules()) {
                     String moduleRel = modulePath(relative).equals(".") ? module : modulePath(relative) + "/" + module;
@@ -97,6 +109,7 @@ public final class ProjectAnalyzer {
                 GradleBuildParser.GradleParseResult gradle = GradleBuildParser.parse(content, relative);
                 dependencies.addAll(gradle.dependencies());
                 javaVersionHint = firstNonNull(javaVersionHint, gradle.javaVersionHint().orElse(null));
+                recordLimitations(relative, gradle.limitations(), evidenceById, limitations);
                 if (!name.startsWith("settings.")) {
                     modulesByPath.putIfAbsent(modulePath(relative), new ModuleInfo(moduleName(relative), modulePath(relative), "GRADLE"));
                 }
@@ -214,6 +227,12 @@ public final class ProjectAnalyzer {
         List<Signal> signals = mergeSignals(detectedSignals, evidenceById);
         addBuildSignals(buildSystems, evidenceById, signals);
         addInsufficientTestsSignal(javaFiles.size(), testFileCount, evidenceById, signals);
+        for (Map.Entry<String, LimitationAcc> entry : limitations.entrySet()) {
+            List<String> evidenceIds = entry.getValue().evidenceIds.stream().sorted().distinct().toList();
+            if (!evidenceIds.isEmpty()) {
+                signals.add(new Signal(entry.getKey(), "OTHER", "Limitação: " + entry.getValue().message, "LOW", evidenceIds));
+            }
+        }
         signals.sort(Comparator.comparing(Signal::id));
 
         List<Cycle> cycles = detectCycles(packageImports, packageToFiles, evidenceById);
@@ -265,7 +284,7 @@ public final class ProjectAnalyzer {
                 metrics
         );
 
-        return AnalysisJson.withHash(draft);
+        return new ScanOutcome(AnalysisJson.withHash(draft), walk.diagnostics());
     }
 
     private static String readText(Path file) throws IOException {
@@ -511,6 +530,23 @@ public final class ProjectAnalyzer {
         return type.map(JavaSourceParser.TypeDeclaration::simpleName).orElse(fallback);
     }
 
+    private static void recordLimitations(
+            String relative,
+            List<ParseLimitation> items,
+            Map<String, Evidence> evidenceById,
+            Map<String, LimitationAcc> limitations
+    ) {
+        for (ParseLimitation item : items) {
+            String evidenceId = EvidenceFactory.evidenceId("limitation", relative, item.code());
+            evidenceById.putIfAbsent(
+                    evidenceId,
+                    EvidenceFactory.patternEvidence(evidenceId, relative, item.code(), "heuristic")
+            );
+            limitations.computeIfAbsent("build.limitation." + item.code(), key -> new LimitationAcc(item.message()))
+                    .evidenceIds.add(evidenceId);
+        }
+    }
+
     private static void addManifestEvidence(Map<String, Evidence> evidenceById, String relative, String locator) {
         String evidenceId = EvidenceFactory.evidenceId("manifest", relative, locator);
         evidenceById.putIfAbsent(evidenceId, EvidenceFactory.manifestEvidence(evidenceId, relative, locator));
@@ -553,6 +589,15 @@ public final class ProjectAnalyzer {
 
         int lineCount() {
             return lineCount;
+        }
+    }
+
+    private static final class LimitationAcc {
+        private final String message;
+        private final Set<String> evidenceIds = new TreeSet<>();
+
+        private LimitationAcc(String message) {
+            this.message = message;
         }
     }
 

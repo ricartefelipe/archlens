@@ -171,6 +171,10 @@ public class InventoryMaterializer {
         }
     }
 
+    public void clear(UUID organizationId, UUID assessmentId) {
+        clearInventory(organizationId, assessmentId);
+    }
+
     private void clearInventory(UUID organizationId, UUID assessmentId) {
         InventoryModuleEntity.delete("organizationId = ?1 and assessmentId = ?2", organizationId, assessmentId);
         InventoryPackageEntity.delete("organizationId = ?1 and assessmentId = ?2", organizationId, assessmentId);
