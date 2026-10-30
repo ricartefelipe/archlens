@@ -29,7 +29,7 @@ export function MermaidDiagram({
           securityLevel: "strict",
         });
 
-        const id = `mermaid-${Math.random().toString(36).slice(2)}`;
+        const id = `mermaid-${crypto.randomUUID().replace(/-/g, "")}`;
         const { svg } = await mermaid.render(id, chart);
 
         if (!cancelled && containerRef.current) {

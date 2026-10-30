@@ -31,6 +31,9 @@ export default defineConfig({
         env: {
           ...process.env,
           AUTH_LOCAL_ENABLED: process.env.AUTH_LOCAL_ENABLED ?? "true",
+          AUTH_LOCAL_ADMIN_PASSWORD: process.env.AUTH_LOCAL_ADMIN_PASSWORD ?? "admin123",
+          AUTH_LOCAL_ARCHITECT_PASSWORD: process.env.AUTH_LOCAL_ARCHITECT_PASSWORD ?? "architect123",
+          AUTH_LOCAL_VIEWER_PASSWORD: process.env.AUTH_LOCAL_VIEWER_PASSWORD ?? "viewer123",
         },
       },
 });

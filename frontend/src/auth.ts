@@ -20,24 +20,18 @@ function loadLocalUsers(): Record<
   if (!localAuthEnabled) {
     return {};
   }
-  // Credenciais apenas em runtime server-side; nunca embutidas no client bundle.
-  return {
-    admin: {
-      password: process.env.AUTH_LOCAL_ADMIN_PASSWORD ?? "admin123",
-      roles: ["ADMIN", "ARCHITECT", "VIEWER"],
-      name: "Ada Admin",
-    },
-    architect: {
-      password: process.env.AUTH_LOCAL_ARCHITECT_PASSWORD ?? "architect123",
-      roles: ["ARCHITECT", "VIEWER"],
-      name: "Alex Architect",
-    },
-    viewer: {
-      password: process.env.AUTH_LOCAL_VIEWER_PASSWORD ?? "viewer123",
-      roles: ["VIEWER"],
-      name: "Vera Viewer",
-    },
-  };
+  // Credenciais apenas em runtime server-side e sempre vindas do ambiente: sem senha
+  // embutida no código, um usuário local só existe se a variável correspondente estiver definida.
+  const candidates: Array<[string, string | undefined, UserRole[], string]> = [
+    ["admin", process.env.AUTH_LOCAL_ADMIN_PASSWORD, ["ADMIN", "ARCHITECT", "VIEWER"], "Ada Admin"],
+    ["architect", process.env.AUTH_LOCAL_ARCHITECT_PASSWORD, ["ARCHITECT", "VIEWER"], "Alex Architect"],
+    ["viewer", process.env.AUTH_LOCAL_VIEWER_PASSWORD, ["VIEWER"], "Vera Viewer"],
+  ];
+  return Object.fromEntries(
+    candidates
+      .filter((entry): entry is [string, string, UserRole[], string] => Boolean(entry[1]))
+      .map(([username, password, roles, name]) => [username, { password, roles, name }]),
+  );
 }
 
 const providers = [

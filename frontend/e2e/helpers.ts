@@ -7,7 +7,6 @@ export const UNIQUE = `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8
 export function analysisFixturePath(): string {
   const candidates = [
     process.env.ARCHLENS_ANALYSIS_JSON ?? "",
-    "/tmp/archlens-e2e-analysis.json",
     path.resolve(__dirname, "../../backend/src/test/resources/valid-analysis.json"),
     path.resolve(__dirname, "../../backend/src/test/resources/demo-analysis.json"),
   ].filter(Boolean);
