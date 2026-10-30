@@ -192,18 +192,20 @@ jobs:
         working-directory: frontend
         env:
           CI: "true"
-          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
-          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8080/api/v1
+          # Mesmo host (localhost) para site, IdP e API: o redirect_uri do Authorization Code
+          # precisa ser idêntico na autorização e na troca do código.
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:8080/api/v1
           AUTH_LOCAL_ENABLED: "false"
           AUTH_SECRET: archlens-ci-nextauth-secret-32chars
           NEXTAUTH_SECRET: archlens-ci-nextauth-secret-32chars
-          NEXTAUTH_URL: http://127.0.0.1:3000
-          AUTH_URL: http://127.0.0.1:3000
+          NEXTAUTH_URL: http://localhost:3000
+          AUTH_URL: http://localhost:3000
           KEYCLOAK_ISSUER: http://localhost:8081/realms/archlens
           KEYCLOAK_CLIENT_ID: archlens-frontend
           KEYCLOAK_CLIENT_SECRET: archlens-frontend-secret
-          ARCHLENS_E2E_BASE_URL: http://127.0.0.1:3000
-          ARCHLENS_E2E_API_URL: http://127.0.0.1:8080/api/v1/assessments
+          ARCHLENS_E2E_BASE_URL: http://localhost:3000
+          ARCHLENS_E2E_API_URL: http://localhost:8080/api/v1/assessments
           ARCHLENS_E2E_KC_URL: http://localhost:8081
           ARCHLENS_E2E_KC_CONTAINER: infra-keycloak-1
         run: bash ../scripts/e2e-oidc.sh
