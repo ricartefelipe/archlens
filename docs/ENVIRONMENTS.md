@@ -10,7 +10,7 @@
 | **demo** | `QUARKUS_PROFILE=demo` (Compose) | Headers locais (OIDC UI opcional) | fictícios documentados | Demonstração local |
 | **production** | `QUARKUS_PROFILE=prod` | OIDC obrigatório; headers de identidade **ignorados** | **sem defaults utilizáveis** | Deploy real |
 
-O Compose padrão usa **demo**, não produção. Overlay de exemplo: `infra/docker-compose.prod.example.yml`.
+O Compose padrão usa **demo**, não produção. Overlay de exemplo: `infra/docker-compose.prod.example.yml`. Para subir a demo com OIDC real (backend validando JWT do Keycloak do Compose, headers locais desligados): `docker compose -f infra/docker-compose.yml -f infra/docker-compose.oidc.yml up -d --build`; o E2E correspondente é `bash scripts/e2e-oidc.sh`.
 
 Em qualquer perfil, `/api/v1` exige identidade. A exceção é `GET /api/v1/health`. A prontidão do processo continua em `/q/health`. No perfil `local` ou `demo`, a ausência de header vira o operador local `dev-user` com papel ADMIN; isso não vale para uma porta exposta fora da máquina do operador. Em `production` o header é ignorado e, sem token OIDC, a API responde 401.
 

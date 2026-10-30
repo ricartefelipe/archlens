@@ -1,9 +1,9 @@
-FROM node:22.14.0-alpine AS deps
+FROM node:22.23.4-alpine3.24 AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
 
-FROM node:22.14.0-alpine AS build
+FROM node:22.23.4-alpine3.24 AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -16,12 +16,16 @@ ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL \
     AUTH_LOCAL_ENABLED=true
 RUN npm run build
 
-FROM node:22.14.0-alpine AS runner
+FROM node:22.23.4-alpine3.24 AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
-RUN addgroup -g 10001 -S archlens \
+# A imagem final só executa `node server.js`: o npm/corepack embutidos e seus pacotes não são usados
+# e saem da imagem para não carregar vulnerabilidades de ferramenta de build.
+RUN apk upgrade --no-cache \
+    && rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+    && addgroup -g 10001 -S archlens \
     && adduser -S -G archlens -u 10001 archlens
 COPY --from=build --chown=archlens:archlens /app/public ./public
 COPY --from=build --chown=archlens:archlens /app/.next/standalone ./
