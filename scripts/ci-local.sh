@@ -38,7 +38,7 @@ echo "==> backend tests"
 echo "==> frontend"
 (
   cd frontend
-  npm ci
+  npm ci --ignore-scripts
   npm run lint
   npm run typecheck
   npm run test
