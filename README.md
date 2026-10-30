@@ -89,7 +89,7 @@ Depois: login → criar avaliação → importar `/tmp/analysis.json` → questi
 
 ## CI
 
-Pipeline em `.github/workflows/ci.yml` (push/PR): analyzer, secret-scan, backend+IT, frontend, contracts, compose config, E2E. Sem deploy.
+Pipeline em `.github/workflows/ci.yml` (push/PR): analyzer, secret-scan, backend+IT, frontend, contracts, compose config, build e scan bloqueante (HIGH/CRITICAL) das imagens finais, E2E com API real e E2E de login OIDC real no Keycloak (PKCE, renovação e revogação). Sem deploy.
 
 Equivalente local: `bash scripts/ci-local.sh`
 

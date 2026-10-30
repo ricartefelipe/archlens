@@ -117,3 +117,20 @@ As versões e advisories remanescentes devem ser reavaliados antes de aceitar PR
 4. Validar configurações de TLS, IdP, banco e credenciais reais no ambiente do primeiro cliente; escolher licença/termos comerciais.
 
 **Veredito:** melhorias e endurecimento local aplicados. **Não homologado para implantação comercial corporativa até a autenticação OIDC positiva e os gates externos restantes serem comprovados.**
+
+## Complemento — 29/10/2026 (fechamento V5)
+
+Executado sobre `develop` (`7f0ae9c`, que já contém a feature de 22/10) numa stack isolada do Compose (`archlens-v5`, portas próprias), com as **imagens finais** dos Dockerfiles do repositório.
+
+| Pendência de 22/10 | O que foi feito | Prova |
+|---|---|---|
+| Login OIDC não homologado (client bearer-only, password grant recusado) | O fluxo correto é o do navegador: Authorization Code com PKCE pelo client `archlens-frontend`, que leva `aud=archlens-api`; o backend valida issuer, audience e assinatura. Overlay `infra/docker-compose.oidc.yml` liga o OIDC no backend e desliga headers locais; `scripts/e2e-oidc.sh` executa o teste | `e2e/oidc.spec.ts` contra as imagens finais: redirecionamento com `response_type=code` e `code_challenge_method=S256`; login de `architect`; `/assessments` carrega pela API real; `GET /api/v1/assessments` sem token **401** e com `X-User/X-Roles/X-Organization-Id` forjados **401** |
+| Renovação e falha fechada após refresh vencido | Access token do realm reduzido a 40 s no teste. Depois de expirar, a página continua autenticada (refresh token renovou no servidor; o refresh token não sai na sessão do navegador). Sessões do usuário revogadas no IdP via API de administração: na expiração seguinte a renovação falha e o `middleware` encerra a sessão (apaga o cookie) e volta ao `/login` | Mesmo teste, `1 passed (1.5m)`. Antes da correção do `middleware.ts` a sessão com `error=RefreshAccessTokenError` continuava navegando sem token; `sessionState.test.ts` cobre a regra |
+| Isolamento por organização com OIDC | Em produção a instalação atende uma organização (bootstrap) e o header de organização é ignorado; fora de produção `OrgIsolationIT` prova 404 cruzado. Multi-organização por claim do IdP não existe e está registrada em LIMITATIONS | `ClosedApiIdentityIT`, `OrgIsolationIT` (41 testes do backend verdes) |
+| Scanner não executado | Trivy 0.69.3 (DB de 29/10/2026) sobre dependências e imagens finais. Analisador: `jackson-databind` 2.18.2 tinha 5 HIGH → 2.18.11. Backend: Quarkus 3.33.2 → **3.40.1.1** (traz `jackson` 2.21.7, corrige os CVEs apontados) e base `eclipse-temurin:21.0.13_9-jre-jammy` com `apt-get upgrade` (16 HIGH de pacotes Ubuntu → 0). Frontend: `node:22.23.4-alpine3.24`, `apk upgrade` e remoção do npm/corepack da imagem final (61 HIGH/CRITICAL entre OpenSSL/musl e pacotes internos do npm → 0) | Backend `archlens-v5-backend` `sha256:54c0585c…` e frontend `sha256:5cf5f665…`: **0 HIGH/CRITICAL**. Novo job `images` na CI constrói e escaneia com `--exit-code 1` |
+| E2E OIDC ignorado na CI | Etapa no job `e2e`: sobe Keycloak + backend com o overlay OIDC e roda `scripts/e2e-oidc.sh` | `.github/workflows/ci.yml` |
+| Restore | Dump (`pg_dump -Fc`, 159.541 bytes, 9 avaliações e 39 eventos de auditoria gerados pelo E2E) restaurado num Postgres 16 vazio; a imagem final do backend subiu sobre ele | `/q/health/ready` 200; `GET /api/v1/assessments` lista as 9 avaliações; 27 tabelas e 3 registros no `databasechangelog` |
+
+Gates reexecutados com as mudanças: analisador 28 testes; backend 41 testes (PostgreSQL via Testcontainers, Quarkus 3.40.1.1); frontend lint, typecheck e 21 testes Vitest; E2E demo `10 passed` e E2E OIDC `1 passed` contra as imagens finais; `git diff --check` limpo.
+
+Continua com o proprietário: escolha da licença, IdP real do cliente e chamada real a provedor de narrativa (opt-in, não executada).
