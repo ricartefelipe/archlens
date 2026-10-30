@@ -114,6 +114,24 @@
 
 **Motivo:** Mitigar abuso de upload no MVP sem dependência externa.
 
+## ADR-021: Hash canônico conferido na importação
+
+**Decisão:** O backend recalcula `archlens-content-hash/v1` e rejeita `contentHash` divergente. Unicidade é `(organização, avaliação, contentHash)`. Chaves de idempotência adicionais do mesmo artefato apontam para a importação existente (`import_idempotency_alias`).
+
+**Motivo:** O valor declarado pelo cliente não é prova do conteúdo. Deduplicar só pelo hash global misturaria organizações e avaliações.
+
+## ADR-022: Exclusão com limpeza retomável de blob
+
+**Decisão:** Excluir a avaliação remove os dependentes na mesma transação, desvincula o snapshot e enfileira `blob_cleanup_task`. Download exige a avaliação e passa a responder 404. `POST /api/v1/maintenance/blob-cleanup` retoma órfãos. `ARCHLENS_LEGAL_HOLD` bloqueia a exclusão. `ARCHLENS_RETAIN_AUDIT` (padrão verdadeiro) preserva `audit_event`.
+
+**Motivo:** O PDF vive em `BYTEA`. A falha de apagar o blob não pode reabrir o download nem impedir uma nova tentativa.
+
+## ADR-023: Pacote Java `build` versionável
+
+**Decisão:** `.gitignore` não usa `**/build/`. Saídas Gradle são ignoradas só nos primeiros níveis de diretório. `MavenPomParser` e `GradleBuildParser` ficam em `io.archlens.analyzer.core.build`.
+
+**Motivo:** O padrão anterior ocultava o código dos parsers e quebrava o build do analisador.
+
 ## ADR-020: Imagens e Compose com versões fixas + non-root
 
 **Decisão:** Tags pinadas (`postgres:16.6-alpine`, Keycloak `26.0.7`, Node/Temurin fixos), Dockerfiles multi-stage, usuário não-root, volumes nomeados, `down` sem `-v` nos scripts oficiais.

@@ -23,7 +23,7 @@ public final class SafeFileWalker {
 
     private static final Set<String> IGNORED_DIR_NAMES = Set.of(
             ".git", "target", "build", ".gradle", ".idea", ".vscode",
-            "node_modules", "dist", "out"
+            "node_modules", "dist", "out", "vendor", "third_party", "third-party", "bower_components"
     );
 
     private static final Set<String> BINARY_EXTENSIONS = Set.of(
@@ -42,6 +42,10 @@ public final class SafeFileWalker {
     }
 
     public static WalkResult walk(Path root, Predicate<Path> fileFilter, WalkLimits limits) throws IOException {
+        return walk(root, fileFilter, limits, null);
+    }
+
+    public static WalkResult walk(Path root, Predicate<Path> fileFilter, WalkLimits limits, WalkControl control) throws IOException {
         Path normalizedRoot = root.toAbsolutePath().normalize();
         if (!Files.isDirectory(normalizedRoot, LinkOption.NOFOLLOW_LINKS) && !Files.isDirectory(normalizedRoot)) {
             throw new IOException("Raiz não é diretório: " + normalizedRoot);
@@ -53,11 +57,16 @@ public final class SafeFileWalker {
         Set<String> ignored = new HashSet<>(IGNORED_DIR_NAMES);
         ignored.addAll(limits.extraIgnoredDirNames());
 
+        long deadlineNanos = limits.maxDurationMillis() > 0
+                ? System.nanoTime() + limits.maxDurationMillis() * 1_000_000L
+                : Long.MAX_VALUE;
         totalBytes = walkRecursive(
                 normalizedRoot,
                 normalizedRoot,
                 fileFilter,
                 limits,
+                control,
+                deadlineNanos,
                 ignored,
                 files,
                 diagnostics,
@@ -73,11 +82,16 @@ public final class SafeFileWalker {
             Path current,
             Predicate<Path> fileFilter,
             WalkLimits limits,
+            WalkControl control,
+            long deadlineNanos,
             Set<String> ignoredDirs,
             List<Path> files,
             List<String> diagnostics,
             long totalBytes
     ) {
+        if (stopRequested(root, current, control, deadlineNanos, diagnostics)) {
+            return totalBytes;
+        }
         if (limits.maxFileCount() > 0 && files.size() >= limits.maxFileCount()) {
             diagnostics.add("Limite de quantidade de arquivos atingido");
             return totalBytes;
@@ -91,6 +105,9 @@ public final class SafeFileWalker {
             children.sort(Comparator.comparing(path -> toRelative(root, path)));
 
             for (Path child : children) {
+                if (stopRequested(root, child, control, deadlineNanos, diagnostics)) {
+                    return totalBytes;
+                }
                 if (limits.maxFileCount() > 0 && files.size() >= limits.maxFileCount()) {
                     diagnostics.add("Limite de quantidade de arquivos atingido");
                     return totalBytes;
@@ -119,11 +136,16 @@ public final class SafeFileWalker {
                     if (Files.isDirectory(target)) {
                         if (isIgnoredDirName(target.getFileName().toString())
                                 || isUnderIgnoredDir(root, child, ignoredDirs)) {
+                            diagnostics.add("Diretório ignorado: " + toRelative(root, child));
                             continue;
                         }
-                        totalBytes = walkRecursive(root, target, fileFilter, limits, ignoredDirs, files, diagnostics, totalBytes);
+                        if (exceedsDepth(root, target, limits)) {
+                            diagnostics.add("Profundidade máxima atingida: " + toRelative(root, child));
+                            continue;
+                        }
+                        totalBytes = walkRecursive(root, target, fileFilter, limits, control, deadlineNanos, ignoredDirs, files, diagnostics, totalBytes);
                     } else if (Files.isRegularFile(target)) {
-                        totalBytes = maybeAddFile(root, child, target, attrs, fileFilter, limits, files, diagnostics, totalBytes);
+                        totalBytes = maybeAddFile(root, child, target, attrs, fileFilter, limits, ignoredDirs, files, diagnostics, totalBytes);
                     }
                     continue;
                 }
@@ -131,14 +153,19 @@ public final class SafeFileWalker {
                 if (attrs.isDirectory()) {
                     String name = child.getFileName().toString();
                     if (ignoredDirs.contains(name)) {
+                        diagnostics.add("Diretório ignorado: " + toRelative(root, child));
                         continue;
                     }
-                    totalBytes = walkRecursive(root, child, fileFilter, limits, ignoredDirs, files, diagnostics, totalBytes);
+                    if (exceedsDepth(root, child, limits)) {
+                        diagnostics.add("Profundidade máxima atingida: " + toRelative(root, child));
+                        continue;
+                    }
+                    totalBytes = walkRecursive(root, child, fileFilter, limits, control, deadlineNanos, ignoredDirs, files, diagnostics, totalBytes);
                     continue;
                 }
 
                 if (attrs.isRegularFile()) {
-                    totalBytes = maybeAddFile(root, child, child, attrs, fileFilter, limits, files, diagnostics, totalBytes);
+                    totalBytes = maybeAddFile(root, child, child, attrs, fileFilter, limits, ignoredDirs, files, diagnostics, totalBytes);
                 }
             }
         } catch (IOException ex) {
@@ -154,6 +181,7 @@ public final class SafeFileWalker {
             BasicFileAttributes attrs,
             Predicate<Path> fileFilter,
             WalkLimits limits,
+            Set<String> ignoredDirs,
             List<Path> files,
             List<String> diagnostics,
             long totalBytes
@@ -162,10 +190,15 @@ public final class SafeFileWalker {
             diagnostics.add("Path fora da raiz ignorado: " + toRelative(root, pathForRelative));
             return totalBytes;
         }
-        if (isUnderIgnoredDir(root, pathForRelative, IGNORED_DIR_NAMES)) {
+        if (isUnderIgnoredDir(root, pathForRelative, ignoredDirs)) {
+            return totalBytes;
+        }
+        if (isSensitive(pathForRelative)) {
+            diagnostics.add("Arquivo sensível ignorado: " + toRelative(root, pathForRelative));
             return totalBytes;
         }
         if (isBinary(pathForRelative)) {
+            diagnostics.add("Binário ignorado: " + toRelative(root, pathForRelative));
             return totalBytes;
         }
         long size = attrs.size();
@@ -185,6 +218,53 @@ public final class SafeFileWalker {
         }
         files.add(pathForRelative.toAbsolutePath().normalize());
         return totalBytes + size;
+    }
+
+    private static boolean stopRequested(
+            Path root,
+            Path current,
+            WalkControl control,
+            long deadlineNanos,
+            List<String> diagnostics
+    ) {
+        if (control != null && control.isCancelled()) {
+            if (diagnostics.stream().noneMatch(item -> item.contains("cancelad"))) {
+                diagnostics.add("Caminhamento cancelado");
+            }
+            return true;
+        }
+        if (System.nanoTime() > deadlineNanos) {
+            if (diagnostics.stream().noneMatch(item -> item.contains("tempo máximo"))) {
+                diagnostics.add("Tempo máximo de caminhamento atingido");
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean exceedsDepth(Path root, Path directory, WalkLimits limits) {
+        if (limits.maxDepth() <= 0) {
+            return false;
+        }
+        Path relative = root.toAbsolutePath().normalize().relativize(directory.toAbsolutePath().normalize());
+        int depth = 0;
+        for (Path segment : relative) {
+            String name = segment.toString();
+            if (!name.isBlank() && !".".equals(name)) {
+                depth++;
+            }
+        }
+        return depth > limits.maxDepth();
+    }
+
+    private static boolean isSensitive(Path path) {
+        String name = path.getFileName().toString().toLowerCase(Locale.ROOT);
+        if (name.equals(".env") || name.startsWith(".env.") || name.equals("id_rsa") || name.equals("id_dsa")
+                || name.equals("id_ecdsa") || name.equals("credentials.json")) {
+            return true;
+        }
+        return name.endsWith(".pem") || name.endsWith(".p12") || name.endsWith(".keystore")
+                || name.endsWith(".jks") || name.endsWith(".key");
     }
 
     public static boolean isWithinRoot(Path root, Path candidate) {

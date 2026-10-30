@@ -99,3 +99,17 @@ Não é substituir o arquiteto; é **acelerar e rastrear** o diagnóstico.
 
 Oferecer **piloto assistido** (semanas) com entrega de relatório e workshop de roadmap — não assinatura SaaS pública.  
 Preço e SLA ficam fora deste documento até validação comercial separada.
+
+## Modalidade desta revisão
+
+Licença de uso instalada no perímetro do cliente, ou serviço de diagnóstico em que a ferramenta apoia o arquiteto. Não há checkout. A licença do código **não foi escolhida**; ver [COMMERCIAL_TERMS_PROPOSAL](COMMERCIAL_TERMS_PROPOSAL.md).
+
+| Função | Estado real |
+|--------|-------------|
+| Scan offline Maven/Gradle sem executar o build | Implementado; Gradle e BOM/parent remotos têm limitação explícita |
+| Importação com hash conferido e escopo por organização | Implementado |
+| Questionário, achados, roadmap, relatório HTML/PDF | Implementado; achados são candidatos heurísticos |
+| Login demo por headers | Só perfis local, demo, dev e test |
+| Produção com OIDC e sem headers forjados | Configurado; não homologado com IdP real nesta revisão |
+| Narrativa de provedor externo | Opt-in, timeout e texto mínimo; padrão é o template determinístico |
+| Exclusão de avaliação e limpeza de PDF | Implementado; retenção legal é configuração, não política jurídica |

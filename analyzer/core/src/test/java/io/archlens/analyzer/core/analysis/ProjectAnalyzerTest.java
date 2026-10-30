@@ -6,6 +6,7 @@ import io.archlens.analyzer.core.schema.SchemaValidator;
 import io.archlens.analyzer.core.testsupport.WorkspacePaths;
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -75,5 +76,14 @@ class ProjectAnalyzerTest {
         assertFalse(document.secrets().isEmpty());
         assertFalse(document.evidences().isEmpty());
         assertEquals("8", document.project().javaVersionHint());
+    }
+
+    @Test
+    void fixtureContentHashMatchesCanonicalJson() throws Exception {
+        Path fixture = Path.of("../../backend/src/test/resources/demo-analysis.json");
+        String raw = Files.readString(fixture);
+        var document = AnalysisJson.read(raw);
+        assertEquals(document.contentHash(), AnalysisJson.computeContentHash(document));
+        assertEquals(document.contentHash(), AnalysisJson.computeContentHashFromJson(raw));
     }
 }

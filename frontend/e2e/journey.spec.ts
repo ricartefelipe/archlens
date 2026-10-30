@@ -123,7 +123,25 @@ test.describe("Jornada E2E ArchLens (serviços reais)", () => {
       page.getByText(/IMPORT|QUESTION|REPORT|PUBLISH|FINDING|ROADMAP/i).first(),
     ).toBeVisible({ timeout: 20_000 });
 
+    await expect(page.getByRole("button", { name: /Excluir avaliação/i })).toHaveCount(0);
+
     await logout(page);
     await expect(page).toHaveURL(/\/login/);
+
+    await loginAs(page, "admin", "admin123");
+    await page.goto(`/assessments/${assessmentId}`);
+    page.once("dialog", (dialog) => void dialog.dismiss());
+    await page.getByRole("button", { name: /Excluir avaliação/i }).click();
+    await expect(page).toHaveURL(new RegExp(`/assessments/${assessmentId}$`));
+
+    page.once("dialog", (dialog) => void dialog.accept());
+    await page.getByRole("button", { name: /Excluir avaliação/i }).click();
+    await page.waitForURL(/\/assessments\/?$/, { timeout: 30_000 });
+
+    const removed = await page.request.get(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1"}/assessments/${assessmentId}`,
+      { headers: { "X-User": "admin", "X-Roles": "ADMIN" } },
+    );
+    expect(removed.status()).toBe(404);
   });
 });

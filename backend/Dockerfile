@@ -7,9 +7,10 @@ WORKDIR /workspace/backend
 RUN mvn -B -DskipTests package \
     && test -f target/quarkus-app/quarkus-run.jar
 
-FROM eclipse-temurin:21.0.6_7-jre-jammy
+FROM eclipse-temurin:21.0.13_9-jre-jammy
 WORKDIR /app
 RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system --gid 10001 archlens \

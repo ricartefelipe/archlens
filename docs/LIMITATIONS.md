@@ -20,9 +20,11 @@
 
 ## SafeFileWalker
 
-- Não segue symlinks cujo alvo real está fora da raiz.
-- Ignora binários por extensão/conteúdo e diretórios padrão (`.git`, `target`, `build`, etc.).
-- Limites default: 2 MiB/arquivo, 50k arquivos, 200 MiB totais.
+- Não segue symlinks cujo alvo real está fora da raiz e não lê URL.
+- Ignora binários por extensão/conteúdo, diretórios de build e dependências vendorizadas (`vendor`, `third_party`, `node_modules`, `target`, `build`, etc.).
+- Não lê conteúdo de arquivos sensíveis (`.env`, `.pem`, `.p12`, chaves `id_rsa`, `credentials.json`); registra o caminho no diagnóstico.
+- Limites default: 2 MiB/arquivo, 50k arquivos, 200 MiB totais, profundidade 32, 60 s. Cancelamento cooperativo interrompe o caminhamento e lista o motivo.
+- Diagnósticos de arquivo/diretório ignorado saem no stderr do comando `scan` e não entram no `analysis.json`.
 
 ## Segredos
 
@@ -34,7 +36,7 @@
 - No Compose **demo** o backend usa `QUARKUS_PROFILE=demo` com `ARCHLENS_LOCAL_HEADER_AUTH=true` (headers `X-User`/`X-Roles`). Isso é explícito e **não** é produção.
 - Perfil `%prod` exige OIDC, rejeita header auth e falha no startup se secrets/CORS/TLS estiverem inseguros.
 - Login local só com `AUTH_LOCAL_ENABLED=true`; proibido em produção.
-- OIDC Bearer ponta a ponta no Compose ainda não é o caminho padrão (implementado no backend prod; não totalmente testado E2E).
+- OIDC Bearer ponta a ponta: o Compose padrão continua em demo (headers locais); com o overlay `infra/docker-compose.oidc.yml` o backend valida JWT do Keycloak e o E2E `e2e/oidc.spec.ts` (executado pela CI) prova login Authorization Code + PKCE, renovação do access token e falha fechada após revogação. Em produção a instalação atende **uma organização** (bootstrap); o header `X-Organization-Id` só é aceito fora de produção. Multi-organização por claim do IdP não está implementada.
 - Server actions no container precisam de `ARCHLENS_API_INTERNAL_URL=http://backend:8080/api/v1`; o browser continua em `NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api/v1`. Sem a URL interna, a UI mostra `fetch failed`.
 - E2E contra o frontend Compose deve usar `PLAYWRIGHT_BASE_URL=http://localhost:3000` (não `127.0.0.1`) para alinhar cookies com `NEXTAUTH_URL`.
 - Filtros de findings (status/severidade/busca) são client-side após GET completo.

@@ -2,10 +2,12 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Keycloak from "next-auth/providers/keycloak";
 import { extractRolesFromProfile } from "@/lib/auth/roles";
+import { refreshKeycloakAccessToken } from "@/lib/auth/refreshKeycloakToken";
 import type { UserRole } from "@/types";
 
 const keycloakConfigured =
   Boolean(process.env.KEYCLOAK_CLIENT_ID) &&
+  Boolean(process.env.KEYCLOAK_CLIENT_SECRET) &&
   Boolean(process.env.KEYCLOAK_ISSUER);
 
 /** Login local somente quando explicitamente habilitado (dev/teste). */
@@ -43,7 +45,7 @@ const providers = [
     ? [
         Keycloak({
           clientId: process.env.KEYCLOAK_CLIENT_ID!,
-          clientSecret: process.env.KEYCLOAK_CLIENT_SECRET ?? "",
+          clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
           issuer: process.env.KEYCLOAK_ISSUER!,
         }),
       ]
@@ -84,8 +86,38 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   callbacks: {
     async jwt({ token, account, profile, user }) {
+      if (account) {
+        token.authProvider = account.provider === "local" ? "local" : "oidc";
+      }
       if (account?.access_token) {
         token.accessToken = account.access_token;
+        token.accessTokenExpiresAt = account.expires_at
+          ? account.expires_at * 1000
+          : Date.now() + (account.expires_in ?? 300) * 1000;
+        token.refreshToken = account.refresh_token;
+        delete token.authError;
+      } else if (
+        token.accessToken &&
+        token.accessTokenExpiresAt &&
+        Date.now() >= token.accessTokenExpiresAt - 60_000
+      ) {
+        try {
+          const renewed = await refreshKeycloakAccessToken(
+            token.refreshToken ?? "",
+            process.env.KEYCLOAK_ISSUER ?? "",
+            process.env.KEYCLOAK_CLIENT_ID ?? "",
+            process.env.KEYCLOAK_CLIENT_SECRET ?? "",
+          );
+          token.accessToken = renewed.accessToken;
+          token.accessTokenExpiresAt = renewed.accessTokenExpiresAt;
+          token.refreshToken = renewed.refreshToken;
+          delete token.authError;
+        } catch {
+          // Nunca reutilizar um access token expirado após falha de renovação.
+          delete token.accessToken;
+          delete token.refreshToken;
+          token.authError = "RefreshAccessTokenError";
+        }
       }
       if (profile) {
         token.roles = extractRolesFromProfile(
@@ -101,7 +133,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      session.accessToken = token.accessToken;
+      session.accessToken = token.authError ? undefined : token.accessToken;
+      session.error = token.authError;
+      session.authProvider = token.authProvider;
       session.roles = (token.roles as UserRole[]) ?? ["VIEWER"];
       return session;
     },
