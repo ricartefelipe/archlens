@@ -1,0 +1,10 @@
+# Overlay: backend com OIDC real ligado e headers locais desligados (login pelo Keycloak do Compose).
+# Uso: docker compose -f infra/docker-compose.yml -f infra/docker-compose.oidc.yml up -d --build
+services:
+  backend:
+    environment:
+      ARCHLENS_OIDC_ENABLED: "true"
+      ARCHLENS_LOCAL_HEADER_AUTH: "false"
+  frontend:
+    environment:
+      AUTH_LOCAL_ENABLED: "false"
