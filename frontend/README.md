@@ -20,7 +20,7 @@ Abra [http://localhost:3000](http://localhost:3000).
 
 ### Autenticação
 
-- **Login local**: somente com `AUTH_LOCAL_ENABLED=true` (dev/teste). Credenciais: `admin`/`admin123`, `architect`/`architect123`, `viewer`/`viewer123`.
+- **Login local**: somente com `AUTH_LOCAL_ENABLED=true` (dev/teste) e com as senhas definidas em `AUTH_LOCAL_ADMIN_PASSWORD`, `AUTH_LOCAL_ARCHITECT_PASSWORD` e `AUTH_LOCAL_VIEWER_PASSWORD` (não há senha embutida no código; `.env.example` e `infra/docker-compose.yml` trazem valores de desenvolvimento).
 - **Keycloak/OIDC**: defina `KEYCLOAK_ISSUER`, `KEYCLOAK_CLIENT_ID` e `KEYCLOAK_CLIENT_SECRET`.
 - Em produção, não habilite login local e use `AUTH_SECRET` forte.
 

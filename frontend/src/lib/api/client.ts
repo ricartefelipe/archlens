@@ -25,10 +25,16 @@ export function getApiTimeoutMs(): number {
 }
 
 export function createCorrelationId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+  if (typeof crypto === "undefined") {
+    return `corr-${Date.now()}`;
+  }
+  if (typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
   }
-  return `corr-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  // Contextos sem randomUUID (http sem TLS): bytes criptograficamente aleatórios, nunca Math.random.
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  return `corr-${Date.now()}-${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")}`;
 }
 
 export class ApiClientError extends Error {

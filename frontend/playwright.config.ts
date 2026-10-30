@@ -1,4 +1,11 @@
+import { randomBytes } from "node:crypto";
 import { defineConfig, devices } from "@playwright/test";
+
+// Senhas do login local do E2E: vindas do ambiente ou geradas por execução, nunca literais.
+const localPasswordVars = ["AUTH_LOCAL_ADMIN_PASSWORD", "AUTH_LOCAL_ARCHITECT_PASSWORD", "AUTH_LOCAL_VIEWER_PASSWORD"];
+for (const name of localPasswordVars) {
+  process.env[name] ||= randomBytes(12).toString("hex");
+}
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
 const realStack = process.env.ARCHLENS_E2E_REAL === "1";
@@ -31,6 +38,9 @@ export default defineConfig({
         env: {
           ...process.env,
           AUTH_LOCAL_ENABLED: process.env.AUTH_LOCAL_ENABLED ?? "true",
+          AUTH_LOCAL_ADMIN_PASSWORD: String(process.env.AUTH_LOCAL_ADMIN_PASSWORD),
+          AUTH_LOCAL_ARCHITECT_PASSWORD: String(process.env.AUTH_LOCAL_ARCHITECT_PASSWORD),
+          AUTH_LOCAL_VIEWER_PASSWORD: String(process.env.AUTH_LOCAL_VIEWER_PASSWORD),
         },
       },
 });

@@ -1,7 +1,7 @@
 FROM node:22.23.4-alpine3.24 AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 FROM node:22.23.4-alpine3.24 AS build
 WORKDIR /app

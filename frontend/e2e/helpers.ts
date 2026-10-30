@@ -7,7 +7,6 @@ export const UNIQUE = `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8
 export function analysisFixturePath(): string {
   const candidates = [
     process.env.ARCHLENS_ANALYSIS_JSON ?? "",
-    "/tmp/archlens-e2e-analysis.json",
     path.resolve(__dirname, "../../backend/src/test/resources/valid-analysis.json"),
     path.resolve(__dirname, "../../backend/src/test/resources/demo-analysis.json"),
   ].filter(Boolean);
@@ -47,4 +46,11 @@ export async function expectLoggedIn(page: Page): Promise<void> {
 export async function logout(page: Page): Promise<void> {
   await page.getByRole("button", { name: /Sair/i }).click();
   await page.waitForURL(/\/login/, { timeout: 15_000 });
+}
+
+/** Senha do usuário local definida pela configuração do Playwright (ambiente ou gerada por execução). */
+export function localPassword(user: "admin" | "architect" | "viewer"): string {
+  const value = process.env[`AUTH_LOCAL_${user.toUpperCase()}_PASSWORD`];
+  if (!value) throw new Error(`senha local de ${user} não definida no ambiente do E2E`);
+  return value;
 }

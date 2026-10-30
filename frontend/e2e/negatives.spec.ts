@@ -6,6 +6,7 @@ import {
   UNIQUE,
   analysisFixturePath,
   expectLoggedIn,
+  localPassword,
   loginAs,
 } from "./helpers";
 
@@ -18,7 +19,7 @@ test.describe("Cenários negativos E2E", () => {
   test("VIEWER não consegue criar avaliação (UI + backend)", async ({
     page,
   }) => {
-    await loginAs(page, "viewer", "viewer123");
+    await loginAs(page, "viewer", localPassword("viewer"));
     await expectLoggedIn(page);
     await page.goto("/assessments");
     await expect(
@@ -40,7 +41,7 @@ test.describe("Cenários negativos E2E", () => {
   });
 
   test("upload de arquivo inválido é bloqueado na UI", async ({ page }) => {
-    await loginAs(page, "architect", "architect123");
+    await loginAs(page, "architect", localPassword("architect"));
     await page.goto("/assessments");
     const name = `Neg inválido ${UNIQUE}`;
     await page.getByLabel(/Nome \*/i).fill(name);
@@ -63,7 +64,7 @@ test.describe("Cenários negativos E2E", () => {
   });
 
   test("payload excedido é rejeitado", async ({ page }) => {
-    await loginAs(page, "architect", "architect123");
+    await loginAs(page, "architect", localPassword("architect"));
     await page.goto("/assessments");
     await page.getByLabel(/Nome \*/i).fill(`Neg oversized ${UNIQUE}`);
     await page.getByRole("button", { name: /Criar avaliação/i }).click();
@@ -83,7 +84,7 @@ test.describe("Cenários negativos E2E", () => {
 
   test("publicação duplicada retorna conflito", async ({ page }) => {
     test.setTimeout(120_000);
-    await loginAs(page, "architect", "architect123");
+    await loginAs(page, "architect", localPassword("architect"));
     await page.goto("/assessments");
     await page.getByLabel(/Nome \*/i).fill(`Neg publish ${UNIQUE}`);
     await page.getByRole("button", { name: /Criar avaliação/i }).click();
@@ -111,7 +112,7 @@ test.describe("Cenários negativos E2E", () => {
   });
 
   test("recurso de outra organização retorna 404", async ({ page }) => {
-    await loginAs(page, "architect", "architect123");
+    await loginAs(page, "architect", localPassword("architect"));
     const api =
       process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
     const foreignId = "00000000-0000-4000-8000-000000000099";
