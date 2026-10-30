@@ -3,6 +3,7 @@ import {
   UNIQUE,
   analysisFixturePath,
   expectLoggedIn,
+  localPassword,
   loginAs,
   logout,
 } from "./helpers";
@@ -21,7 +22,7 @@ test.describe("Jornada E2E ArchLens (serviços reais)", () => {
     const name = `Avaliação ${UNIQUE}`;
     const analysisPath = analysisFixturePath();
 
-    await loginAs(page, "architect", "architect123");
+    await loginAs(page, "architect", localPassword("architect"));
     await expectLoggedIn(page);
 
     await page.goto("/assessments");
@@ -128,7 +129,7 @@ test.describe("Jornada E2E ArchLens (serviços reais)", () => {
     await logout(page);
     await expect(page).toHaveURL(/\/login/);
 
-    await loginAs(page, "admin", "admin123");
+    await loginAs(page, "admin", localPassword("admin"));
     await page.goto(`/assessments/${assessmentId}`);
     page.once("dialog", (dialog) => void dialog.dismiss());
     await page.getByRole("button", { name: /Excluir avaliação/i }).click();

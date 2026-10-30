@@ -47,3 +47,10 @@ export async function logout(page: Page): Promise<void> {
   await page.getByRole("button", { name: /Sair/i }).click();
   await page.waitForURL(/\/login/, { timeout: 15_000 });
 }
+
+/** Senha do usuário local definida pela configuração do Playwright (ambiente ou gerada por execução). */
+export function localPassword(user: "admin" | "architect" | "viewer"): string {
+  const value = process.env[`AUTH_LOCAL_${user.toUpperCase()}_PASSWORD`];
+  if (!value) throw new Error(`senha local de ${user} não definida no ambiente do E2E`);
+  return value;
+}
