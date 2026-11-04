@@ -28,21 +28,39 @@ public class IdentityService {
     @ConfigProperty(name = "archlens.local-header-auth.enabled", defaultValue = "false")
     boolean localHeaderAuth;
 
+    @ConfigProperty(name = "archlens.local-header-auth.secret")
+    Optional<String> localHeaderAuthSecret;
+
     @ConfigProperty(name = "archlens.profile.label", defaultValue = "unspecified")
     String profileLabel;
 
+    /**
+     * A requisição veio do servidor do frontend: modo de headers locais permitido neste perfil e
+     * segredo compartilhado correto. Só nesse caso os headers de identidade e de organização valem.
+     */
+    public boolean trustedProxyRequest() {
+        if (!HeaderIdentityPolicy.headerIdentityAllowed(localHeaderAuth, profileLabel) || headers == null) {
+            return false;
+        }
+        return HeaderIdentityPolicy.proxySecretMatches(
+                localHeaderAuthSecret.orElse(null),
+                headers.getHeaderString(HeaderIdentityPolicy.PROXY_SECRET_HEADER));
+    }
+
     public ArchLensIdentity current() {
-        if (HeaderIdentityPolicy.headerIdentityAllowed(localHeaderAuth, profileLabel)) {
-            String user = Optional.ofNullable(headers.getHeaderString("X-User")).orElse("dev-user");
-            String rolesHeader = Optional.ofNullable(headers.getHeaderString("X-Roles")).orElse("ADMIN");
-            Set<UserRole> roles = parseRoles(rolesHeader);
+        if (trustedProxyRequest()) {
+            String user = Optional.ofNullable(headers.getHeaderString("X-User")).map(String::trim).orElse("");
+            if (user.isEmpty()) {
+                throw new NotAuthorizedException("Identidade local ausente");
+            }
+            Set<UserRole> roles = parseRoles(Optional.ofNullable(headers.getHeaderString("X-Roles")).orElse(""));
             if (roles.isEmpty()) {
                 roles.add(UserRole.VIEWER);
             }
             return new ArchLensIdentity(user, user + "@local", roles);
         }
         if (!oidcEnabled) {
-            throw new NotAuthorizedException("Autenticação OIDC obrigatória");
+            throw new NotAuthorizedException("Autenticação obrigatória");
         }
         if (securityIdentity == null || securityIdentity.isAnonymous()) {
             throw new NotAuthorizedException("Token OIDC ausente ou inválido");

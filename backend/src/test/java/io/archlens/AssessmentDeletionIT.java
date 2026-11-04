@@ -35,6 +35,7 @@ class AssessmentDeletionIT {
     void deleteRemovesDependentsAndDownloadAndCleanupCanRunAgain() throws Exception {
         String json = Files.readString(Path.of("src/test/resources/demo-analysis.json"));
         String assessmentId = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin")
                 .header("X-Roles", "ADMIN")
                 .contentType(ContentType.JSON)
@@ -47,6 +48,7 @@ class AssessmentDeletionIT {
         assertNotNull(assessmentId);
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin")
                 .header("X-Roles", "ARCHITECT")
                 .header("Idempotency-Key", "purge-import")
@@ -58,6 +60,7 @@ class AssessmentDeletionIT {
                 .statusCode(200);
 
         String snapshotId = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin")
                 .header("X-Roles", "ARCHITECT")
         .when()
@@ -67,6 +70,7 @@ class AssessmentDeletionIT {
                 .extract().path("id");
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin")
                 .header("X-Roles", "VIEWER")
         .when()
@@ -75,6 +79,7 @@ class AssessmentDeletionIT {
                 .statusCode(200);
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "viewer")
                 .header("X-Roles", "VIEWER")
         .when()
@@ -83,6 +88,7 @@ class AssessmentDeletionIT {
                 .statusCode(403);
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin")
                 .header("X-Roles", "ADMIN")
         .when()
@@ -91,6 +97,7 @@ class AssessmentDeletionIT {
                 .statusCode(204);
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin")
                 .header("X-Roles", "ADMIN")
         .when()
@@ -99,6 +106,7 @@ class AssessmentDeletionIT {
                 .statusCode(404);
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin")
                 .header("X-Roles", "ADMIN")
         .when()
@@ -107,6 +115,7 @@ class AssessmentDeletionIT {
                 .statusCode(404);
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin")
                 .header("X-Roles", "ADMIN")
         .when()
@@ -115,6 +124,7 @@ class AssessmentDeletionIT {
                 .statusCode(404);
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin")
                 .header("X-Roles", "VIEWER")
         .when()
@@ -138,6 +148,7 @@ class AssessmentDeletionIT {
         });
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "viewer")
                 .header("X-Roles", "VIEWER")
         .when()
@@ -147,6 +158,7 @@ class AssessmentDeletionIT {
 
         BlobCleanupService.failNextStorageAttempts(1);
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin")
                 .header("X-Roles", "ADMIN")
         .when()
@@ -160,6 +172,7 @@ class AssessmentDeletionIT {
         assertEquals(1, stillPending);
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin")
                 .header("X-Roles", "ADMIN")
         .when()
@@ -169,6 +182,7 @@ class AssessmentDeletionIT {
                 .body("completed", greaterThanOrEqualTo(1));
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin")
                 .header("X-Roles", "ADMIN")
         .when()
@@ -186,6 +200,7 @@ class AssessmentDeletionIT {
         UUID orgA = upsertOrg("Delete Org A");
         UUID orgB = upsertOrg("Delete Org B");
         String assessmentA = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin-a")
                 .header("X-Roles", "ADMIN")
                 .header("X-Organization-Id", orgA.toString())
@@ -198,6 +213,7 @@ class AssessmentDeletionIT {
                 .extract().path("id");
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin-b")
                 .header("X-Roles", "ADMIN")
                 .header("X-Organization-Id", orgB.toString())
@@ -207,6 +223,7 @@ class AssessmentDeletionIT {
                 .statusCode(404);
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin-b")
                 .header("X-Roles", "ADMIN")
                 .header("X-Organization-Id", orgB.toString())
@@ -216,6 +233,7 @@ class AssessmentDeletionIT {
                 .statusCode(404);
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin-a")
                 .header("X-Roles", "ADMIN")
                 .header("X-Organization-Id", orgA.toString())
@@ -229,6 +247,7 @@ class AssessmentDeletionIT {
     void failedAuditInsertRollsBackTheDelete() throws Exception {
         String json = Files.readString(Path.of("src/test/resources/demo-analysis.json"));
         String assessmentId = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin")
                 .header("X-Roles", "ADMIN")
                 .contentType(ContentType.JSON)
@@ -240,6 +259,7 @@ class AssessmentDeletionIT {
                 .extract().path("id");
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin")
                 .header("X-Roles", "ARCHITECT")
                 .header("Idempotency-Key", "rollback-import")
@@ -251,6 +271,7 @@ class AssessmentDeletionIT {
                 .statusCode(200);
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "a".repeat(300))
                 .header("X-Roles", "ADMIN")
         .when()
@@ -259,6 +280,7 @@ class AssessmentDeletionIT {
                 .statusCode(500);
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin")
                 .header("X-Roles", "ADMIN")
         .when()
