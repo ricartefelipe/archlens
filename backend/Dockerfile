@@ -1,4 +1,5 @@
-FROM maven:3.9.9-eclipse-temurin-21 AS build
+# maven:3.9.9-eclipse-temurin-21
+FROM maven@sha256:3a4ab3276a087bf276f79cae96b1af04f53731bec53fb2e651aca79e4b10211e AS build
 WORKDIR /workspace
 COPY backend/pom.xml backend/pom.xml
 COPY backend/src backend/src
@@ -7,7 +8,8 @@ WORKDIR /workspace/backend
 RUN mvn -B -DskipTests package \
     && test -f target/quarkus-app/quarkus-run.jar
 
-FROM eclipse-temurin:21.0.13_9-jre-jammy
+# eclipse-temurin:21.0.13_9-jre-jammy
+FROM eclipse-temurin@sha256:1eac8b8fee11ca7d6725a48bc5d41992ed1561504ebae25490d2d062847e8269
 WORKDIR /app
 RUN apt-get update \
     && apt-get upgrade -y --no-install-recommends \
