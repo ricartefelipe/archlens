@@ -24,8 +24,10 @@ services:
       start_period: 10s
 
   keycloak:
-    # Keycloak 26.8.1, fixado pelo digest.
-    image: quay.io/keycloak/keycloak:26.8.1@sha256:3f3c5f8e03c614774b4bd9173b88391fefa4153bfc010d8012d59ad825377332
+    # Keycloak 26.8.1 com a Guava corrigida (infra/keycloak/Dockerfile).
+    build:
+      context: ./keycloak
+    image: archlens-keycloak:26.8.1
     command: ["start-dev", "--import-realm", "--http-port=8081"]
     environment:
       # Administrador temporário do master, só para o ambiente local (o e2e usa admin/admin no kcadm).
