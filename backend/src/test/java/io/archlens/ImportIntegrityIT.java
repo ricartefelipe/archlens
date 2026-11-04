@@ -54,6 +54,7 @@ class ImportIntegrityIT {
                 "\"contentHash\" : \"sha256:" + "ab".repeat(32) + "\""
         );
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
                 .header("Idempotency-Key", "tampered")
@@ -77,6 +78,7 @@ class ImportIntegrityIT {
 
     private static String createAssessment(String name) {
         return given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ADMIN")
                 .contentType(ContentType.JSON)
@@ -90,6 +92,7 @@ class ImportIntegrityIT {
 
     private static String importJson(String assessment, String key, String json) {
         return given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
                 .header("Idempotency-Key", key)
@@ -114,6 +117,7 @@ class ImportIntegrityIT {
         assertNotEquals(importA, importB);
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "intruder")
                 .header("X-Roles", "ADMIN")
                 .header("X-Organization-Id", orgB.toString())
@@ -140,6 +144,7 @@ class ImportIntegrityIT {
 
     private static String createAssessmentInOrg(UUID orgId, String name) {
         return given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ADMIN")
                 .header("X-Organization-Id", orgId.toString())
@@ -154,6 +159,7 @@ class ImportIntegrityIT {
 
     private static String importJsonInOrg(UUID orgId, String assessment, String key, String json) {
         return given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
                 .header("X-Organization-Id", orgId.toString())

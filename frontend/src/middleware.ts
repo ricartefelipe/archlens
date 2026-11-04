@@ -15,6 +15,18 @@ export default auth((req) => {
   }
 
   if (!isSessionUsable(req.auth)) {
+    if (pathname === "/bff" || pathname.startsWith("/bff/")) {
+      // Chamada da ponte da API sem sessão: 401 em JSON, não redirecionamento para a página de login.
+      return NextResponse.json(
+        {
+          type: "about:blank",
+          title: "Não autenticado",
+          status: 401,
+          detail: "Sessão ausente ou expirada. Faça login novamente.",
+        },
+        { status: 401, headers: { "content-type": "application/problem+json" } },
+      );
+    }
     if (pathname === "/" && !req.auth) {
       return NextResponse.next();
     }

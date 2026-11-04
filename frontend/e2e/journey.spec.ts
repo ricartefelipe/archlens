@@ -6,6 +6,8 @@ import {
   localPassword,
   loginAs,
   logout,
+  apiUrl,
+  serverIdentity,
 } from "./helpers";
 
 /**
@@ -139,10 +141,9 @@ test.describe("Jornada E2E ArchLens (serviços reais)", () => {
     await page.getByRole("button", { name: /Excluir avaliação/i }).click();
     await page.waitForURL(/\/assessments\/?$/, { timeout: 30_000 });
 
-    const removed = await page.request.get(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1"}/assessments/${assessmentId}`,
-      { headers: { "X-User": "admin", "X-Roles": "ADMIN" } },
-    );
+    const removed = await page.request.get(`${apiUrl()}/assessments/${assessmentId}`, {
+      headers: serverIdentity("admin", "ADMIN"),
+    });
     expect(removed.status()).toBe(404);
   });
 });

@@ -1,11 +1,13 @@
 package io.archlens.infrastructure.config;
 
+import io.archlens.infrastructure.security.HeaderIdentityPolicy;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
@@ -57,13 +59,22 @@ public class SecurityConfigValidator {
     @ConfigProperty(name = "archlens.profile.label", defaultValue = "unspecified")
     String profileLabel;
 
+    @ConfigProperty(name = "archlens.local-header-auth.secret")
+    Optional<String> localHeaderAuthSecret;
+
     void onStart(@Observes StartupEvent event) {
         LOG.infof("ArchLens profile label=%s hardened=%s oidc=%s headerAuth=%s",
                 profileLabel, requireHardened, oidcEnabled, localHeaderAuth);
 
         if (!requireHardened) {
             if (localHeaderAuth) {
-                LOG.warn("Auth por headers locais ATIVA — adequado só para desenvolvimento/demo/teste");
+                List<String> errors = headerAuthErrors(localHeaderAuth, localHeaderAuthSecret.orElse(null));
+                if (!errors.isEmpty()) {
+                    String message = "Configuração inválida: " + String.join("; ", errors);
+                    LOG.error(message);
+                    throw new IllegalStateException(message);
+                }
+                LOG.warn("Auth por headers locais ATIVA (só com o segredo do frontend) — adequado só para desenvolvimento/demo/teste");
             }
             return;
         }
@@ -96,6 +107,20 @@ public class SecurityConfigValidator {
             String oidcAuthServerUrl,
             String oidcIssuer,
             String corsOrigins) {
+    }
+
+    /**
+     * Com headers locais ligados, o backend só aceita identidade vinda do servidor do frontend, que
+     * prova a origem com um segredo compartilhado. Sem ele, qualquer cliente que alcance a porta da API
+     * poderia se declarar ADMIN.
+     */
+    public static List<String> headerAuthErrors(boolean localHeaderAuth, String secret) {
+        List<String> errors = new ArrayList<>();
+        if (localHeaderAuth && (isBlank(secret) || secret.trim().length() < HeaderIdentityPolicy.MIN_SECRET_LENGTH)) {
+            errors.add("ARCHLENS_LOCAL_HEADER_AUTH_SECRET é obrigatório com headers locais e precisa de ao menos "
+                    + HeaderIdentityPolicy.MIN_SECRET_LENGTH + " caracteres (o mesmo valor no frontend)");
+        }
+        return errors;
     }
 
     public static List<String> productionErrors(HardeningInput input) {

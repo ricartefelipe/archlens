@@ -46,7 +46,7 @@ Detalhes e limpeza de órfãos do Desktop: [RUNBOOK](docs/RUNBOOK.md).
 
 **Usuários fictícios (demo):** `admin`/`admin123`, `architect`/`architect123`, `viewer`/`viewer123`
 
-O backend no Compose usa perfil **`demo`** (auth por headers). Instalação do operador na própria máquina usa perfil **`local`**. Produção exige perfil `%prod` + secrets reais — ver [ENVIRONMENTS](docs/ENVIRONMENTS.md). Headers `X-User` / `X-Roles` / `X-Organization-Id` são ignorados em produção.
+O backend no Compose usa perfil **`demo`** (auth por headers, aceitos só com o segredo do servidor do frontend; o navegador fala com a ponte `/bff/v1`). Instalação do operador na própria máquina usa perfil **`local`**. Produção exige perfil `%prod` + secrets reais — ver [ENVIRONMENTS](docs/ENVIRONMENTS.md). Headers `X-User` / `X-Roles` / `X-Organization-Id` são ignorados em produção.
 
 ### Analisar o sample (offline)
 

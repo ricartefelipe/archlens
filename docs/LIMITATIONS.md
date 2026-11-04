@@ -33,11 +33,11 @@
 
 ## Frontend / auth / Compose
 
-- No Compose **demo** o backend usa `QUARKUS_PROFILE=demo` com `ARCHLENS_LOCAL_HEADER_AUTH=true` (headers `X-User`/`X-Roles`). Isso é explícito e **não** é produção.
+- No Compose **demo** o backend usa `QUARKUS_PROFILE=demo` com `ARCHLENS_LOCAL_HEADER_AUTH=true` (headers `X-User`/`X-Roles`). Os headers só valem com o segredo do servidor do frontend (`ARCHLENS_LOCAL_HEADER_AUTH_SECRET`); o Compose traz um valor padrão que serve só para a máquina local. Isso é explícito e **não** é produção.
 - Perfil `%prod` exige OIDC, rejeita header auth e falha no startup se secrets/CORS/TLS estiverem inseguros.
 - Login local só com `AUTH_LOCAL_ENABLED=true`; proibido em produção.
 - OIDC Bearer ponta a ponta: o Compose padrão continua em demo (headers locais); com o overlay `infra/docker-compose.oidc.yml` o backend valida JWT do Keycloak e o E2E `e2e/oidc.spec.ts` (executado pela CI) prova login Authorization Code + PKCE, renovação do access token e falha fechada após revogação. Em produção a instalação atende **uma organização** (bootstrap); o header `X-Organization-Id` só é aceito fora de produção. Multi-organização por claim do IdP não está implementada.
-- Server actions no container precisam de `ARCHLENS_API_INTERNAL_URL=http://backend:8080/api/v1`; o browser continua em `NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api/v1`. Sem a URL interna, a UI mostra `fetch failed`.
+- O servidor do frontend no container precisa de `ARCHLENS_API_INTERNAL_URL=http://backend:8080/api/v1` (server actions e a ponte `/bff/v1`). O browser não chama a API: fala com `/bff/v1` do próprio frontend. Sem a URL interna, a UI mostra `fetch failed`.
 - E2E contra o frontend Compose deve usar `PLAYWRIGHT_BASE_URL=http://localhost:3000` (não `127.0.0.1`) para alinhar cookies com `NEXTAUTH_URL`.
 - Filtros de findings (status/severidade/busca) são client-side após GET completo.
 - Downloads HTML/PDF/CSV via server actions; schema do `analysis.json` no servidor.

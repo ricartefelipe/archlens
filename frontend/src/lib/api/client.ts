@@ -1,3 +1,4 @@
+import { BFF_BASE_PATH, IDENTITY_HEADERS, PROXY_SECRET_HEADER } from "@/lib/api/bff";
 import type { ApiError, ProblemDetails } from "@/types";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -6,15 +7,41 @@ const CORRELATION_HEADER = "X-Correlation-Id";
 /**
  * Base da API.
  * No servidor (RSC/actions), preferir URL interna do Compose (`ARCHLENS_API_INTERNAL_URL`),
- * pois `localhost` dentro do container não alcança o backend. No browser, usar a URL pública.
+ * pois `localhost` dentro do container não alcança o backend. No navegador, a ponte do próprio
+ * frontend (`/bff/v1`), que confere a sessão e repassa a identidade: o navegador não fala com a API.
  */
 export function getApiBaseUrl(): string {
-  const publicUrl =
-    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
   if (typeof window === "undefined") {
-    return process.env.ARCHLENS_API_INTERNAL_URL ?? publicUrl;
+    return (
+      process.env.ARCHLENS_API_INTERNAL_URL ??
+      process.env.NEXT_PUBLIC_API_BASE_URL ??
+      "http://localhost:8080/api/v1"
+    );
   }
-  return publicUrl;
+  return BFF_BASE_PATH;
+}
+
+/**
+ * Política de identidade das chamadas: no navegador, nenhum header de identidade nem token sai
+ * (a ponte deriva tudo da sessão); no servidor, a identidade local segue com o segredo
+ * compartilhado com o backend.
+ */
+export function applyIdentityPolicy(
+  headers: Record<string, string>,
+  inBrowser: boolean = typeof window !== "undefined",
+): Record<string, string> {
+  if (inBrowser) {
+    const blocked = new Set<string>(IDENTITY_HEADERS);
+    return Object.fromEntries(
+      Object.entries(headers).filter(([name]) => !blocked.has(name.toLowerCase())),
+    );
+  }
+  const hasLocalIdentity = Object.keys(headers).some((name) => name.toLowerCase() === "x-user");
+  const secret = process.env.ARCHLENS_LOCAL_HEADER_AUTH_SECRET;
+  if (hasLocalIdentity && secret) {
+    return { ...headers, [PROXY_SECRET_HEADER]: secret };
+  }
+  return headers;
 }
 
 export function getApiTimeoutMs(): number {
@@ -205,7 +232,7 @@ export async function apiFetch<T>(
     const response = await fetch(url, {
       ...rest,
       signal: controller.signal,
-      headers: {
+      headers: applyIdentityPolicy({
         Accept: "application/json, application/problem+json",
         ...(rest.body instanceof FormData
           ? {}
@@ -214,8 +241,8 @@ export async function apiFetch<T>(
             : {}),
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         [CORRELATION_HEADER]: corr,
-        ...headers,
-      },
+        ...(headers as Record<string, string> | undefined),
+      }),
     });
 
     if (!response.ok) {
@@ -262,7 +289,9 @@ export async function apiDownload(
     [CORRELATION_HEADER]: corr,
   };
 
-  if (typeof auth === "string" && auth) {
+  if (typeof window !== "undefined") {
+    // Navegador: a ponte do frontend apresenta a identidade da sessão; nada de identidade aqui.
+  } else if (typeof auth === "string" && auth) {
     headers.Authorization = `Bearer ${auth}`;
   } else if (auth && typeof auth === "object" && auth.accessToken) {
     headers.Authorization = `Bearer ${auth.accessToken}`;
@@ -290,7 +319,7 @@ export async function apiDownload(
 
   try {
     const response = await fetch(url, {
-      headers,
+      headers: applyIdentityPolicy(headers),
       signal: controller.signal,
     });
 
