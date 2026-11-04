@@ -46,11 +46,12 @@ test.describe("Cenários negativos E2E", () => {
   });
 
   test("API não aceita identidade sem o segredo do frontend", async ({ request }) => {
-    for (const headers of [
+    const attempts: Record<string, string>[] = [
       {},
       { "X-User": "intruso", "X-Roles": "ADMIN" },
       { "X-User": "intruso", "X-Roles": "ADMIN", "X-ArchLens-Proxy-Secret": "chute-errado-chute-errado-chute-01" },
-    ]) {
+    ];
+    for (const headers of attempts) {
       const list = await request.get(`${apiUrl()}/assessments`, { headers });
       expect(list.status()).toBe(401);
       const audit = await request.get(`${apiUrl()}/audit`, { headers });
