@@ -51,6 +51,9 @@ services:
       ARCHLENS_DB_PASSWORD: archlens
       ARCHLENS_OIDC_ENABLED: "false"
       ARCHLENS_LOCAL_HEADER_AUTH: "true"
+      # Segredo compartilhado com o servidor do frontend: sem ele, X-User/X-Roles são ignorados (401).
+      # O valor padrão serve só para a demonstração local; fora desta máquina, gere um próprio.
+      ARCHLENS_LOCAL_HEADER_AUTH_SECRET: ${ARCHLENS_LOCAL_HEADER_AUTH_SECRET:-archlens-local-proxy-secret-somente-nesta-maquina}
       ARCHLENS_OIDC_URL: http://keycloak:8081/realms/archlens
       ARCHLENS_OIDC_ISSUER: http://localhost:8081/realms/archlens
       ARCHLENS_OIDC_CLIENT_ID: archlens-api
@@ -92,9 +95,11 @@ services:
       AUTH_URL: http://localhost:3000
       NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: archlens-local-nextauth-secret
-      # Browser (host) → localhost; server actions no container → hostname Compose
+      # O navegador chama a ponte /bff/v1 do próprio frontend; o servidor do frontend fala com o backend
       NEXT_PUBLIC_API_BASE_URL: http://localhost:8080/api/v1
       ARCHLENS_API_INTERNAL_URL: http://backend:8080/api/v1
+      # Mesmo valor do backend; fica só no servidor do frontend (nunca em NEXT_PUBLIC_*).
+      ARCHLENS_LOCAL_HEADER_AUTH_SECRET: ${ARCHLENS_LOCAL_HEADER_AUTH_SECRET:-archlens-local-proxy-secret-somente-nesta-maquina}
       AUTH_LOCAL_ENABLED: "true"
       # Senhas do login local de desenvolvimento (sem default no código).
       AUTH_LOCAL_ADMIN_PASSWORD: admin123

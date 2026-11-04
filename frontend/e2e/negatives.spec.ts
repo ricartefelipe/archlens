@@ -5,9 +5,11 @@ import os from "node:os";
 import {
   UNIQUE,
   analysisFixturePath,
+  apiUrl,
   expectLoggedIn,
   localPassword,
   loginAs,
+  serverIdentity,
 } from "./helpers";
 
 test.describe("Cenários negativos E2E", () => {
@@ -26,18 +28,46 @@ test.describe("Cenários negativos E2E", () => {
       page.getByRole("button", { name: /Criar avaliação/i }),
     ).toHaveCount(0);
 
-    const response = await page.request.post(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1"}/assessments`,
-      {
-        data: { name: `viewer-forbidden-${UNIQUE}`, description: "neg" },
-        headers: {
-          "Content-Type": "application/json",
-          "X-User": "viewer",
-          "X-Roles": "VIEWER",
-        },
+    const response = await page.request.post(`${apiUrl()}/assessments`, {
+      data: { name: `viewer-forbidden-${UNIQUE}`, description: "neg" },
+      headers: {
+        "Content-Type": "application/json",
+        ...serverIdentity("viewer", "VIEWER"),
       },
-    );
+    });
     expect(response.status()).toBe(403);
+
+    // Pela ponte do frontend, a sessão de VIEWER vale mais que qualquer header forjado no navegador.
+    const viaBff = await page.request.post("/bff/v1/assessments", {
+      data: { name: `viewer-forjado-${UNIQUE}`, description: "neg" },
+      headers: { "Content-Type": "application/json", "X-User": "admin", "X-Roles": "ADMIN" },
+    });
+    expect(viaBff.status()).toBe(403);
+  });
+
+  test("API não aceita identidade sem o segredo do frontend", async ({ request }) => {
+    for (const headers of [
+      {},
+      { "X-User": "intruso", "X-Roles": "ADMIN" },
+      { "X-User": "intruso", "X-Roles": "ADMIN", "X-ArchLens-Proxy-Secret": "chute-errado-chute-errado-chute-01" },
+    ]) {
+      const list = await request.get(`${apiUrl()}/assessments`, { headers });
+      expect(list.status()).toBe(401);
+      const audit = await request.get(`${apiUrl()}/audit`, { headers });
+      expect(audit.status()).toBe(401);
+      const create = await request.post(`${apiUrl()}/assessments`, {
+        data: { name: `intrusa-${UNIQUE}` },
+        headers: { "Content-Type": "application/json", ...headers },
+      });
+      expect(create.status()).toBe(401);
+    }
+    const health = await request.get(`${apiUrl()}/health`);
+    expect(health.status()).toBe(200);
+  });
+
+  test("ponte da API sem sessão responde 401", async ({ request }) => {
+    const response = await request.get("/bff/v1/assessments");
+    expect(response.status()).toBe(401);
   });
 
   test("upload de arquivo inválido é bloqueado na UI", async ({ page }) => {
@@ -113,13 +143,10 @@ test.describe("Cenários negativos E2E", () => {
 
   test("recurso de outra organização retorna 404", async ({ page }) => {
     await loginAs(page, "architect", localPassword("architect"));
-    const api =
-      process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
     const foreignId = "00000000-0000-4000-8000-000000000099";
-    const response = await page.request.get(`${api}/assessments/${foreignId}`, {
+    const response = await page.request.get(`${apiUrl()}/assessments/${foreignId}`, {
       headers: {
-        "X-User": "architect",
-        "X-Roles": "ARCHITECT,VIEWER",
+        ...serverIdentity("architect", "ARCHITECT,VIEWER"),
         "X-Organization-Id": "11111111-1111-4111-8111-111111111111",
       },
     });
