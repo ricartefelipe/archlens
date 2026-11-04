@@ -44,6 +44,7 @@ class ArchLensApiIT {
     @Order(1)
     void healthReportsRulesLoaded() {
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ADMIN")
         .when()
@@ -59,6 +60,7 @@ class ArchLensApiIT {
     @Order(2)
     void createAssessment() {
         assessmentId = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ADMIN")
                 .contentType(ContentType.JSON)
@@ -77,6 +79,7 @@ class ArchLensApiIT {
     @Order(3)
     void invalidImportRejected() {
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
                 .header("Idempotency-Key", UUID.randomUUID().toString())
@@ -95,6 +98,7 @@ class ArchLensApiIT {
     void oversizedPayloadRejected() {
         String big = "{\"schemaVersion\":\"1.0.0\",\"pad\":\"" + "x".repeat(6_000_000) + "\"}";
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
                 .header("Idempotency-Key", "too-big")
@@ -110,6 +114,7 @@ class ArchLensApiIT {
     @Order(5)
     void realAnalyzerImportMaterializesAndGeneratesFindings() {
         findingsCount = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
                 .header("Idempotency-Key", "import-demo-1")
@@ -124,6 +129,7 @@ class ArchLensApiIT {
                 .extract().path("findingsCount");
 
         importId = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "VIEWER")
         .when()
@@ -137,6 +143,7 @@ class ArchLensApiIT {
         findingId = importId;
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "VIEWER")
         .when()
@@ -151,6 +158,7 @@ class ArchLensApiIT {
     @Order(6)
     void importIsIdempotentAndConflictsOnDifferentPayload() {
         String first = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
                 .header("Idempotency-Key", "idem-key-stable")
@@ -163,6 +171,7 @@ class ArchLensApiIT {
                 .extract().path("importId");
 
         String second = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
                 .header("Idempotency-Key", "idem-key-stable")
@@ -177,6 +186,7 @@ class ArchLensApiIT {
         assertEquals(first, second);
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
                 .header("Idempotency-Key", "idem-key-stable")
@@ -193,6 +203,7 @@ class ArchLensApiIT {
     @Order(7)
     void questionnaireChangesScoresAndRejectsOutOfRange() {
         var before = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "VIEWER")
         .when()
@@ -202,6 +213,7 @@ class ArchLensApiIT {
                 .extract().jsonPath().getDouble("find { it.dimensionKey == 'BUSINESS_CRITICALITY' }.score");
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
                 .contentType(ContentType.JSON)
@@ -212,6 +224,7 @@ class ArchLensApiIT {
                 .statusCode(400);
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
                 .contentType(ContentType.JSON)
@@ -230,6 +243,7 @@ class ArchLensApiIT {
                 .statusCode(204);
 
         var after = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "VIEWER")
         .when()
@@ -247,6 +261,7 @@ class ArchLensApiIT {
     @Order(8)
     void reviewFindingCreatesAuditEvent() {
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "architect")
                 .header("X-Roles", "ARCHITECT")
                 .contentType(ContentType.JSON)
@@ -259,6 +274,7 @@ class ArchLensApiIT {
                 .body("reviewedBy", equalTo("architect"));
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "VIEWER")
         .when()
@@ -272,6 +288,7 @@ class ArchLensApiIT {
     @Order(9)
     void modernizationAndRoadmap() {
         optionId = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
                 .contentType(ContentType.JSON)
@@ -288,6 +305,7 @@ class ArchLensApiIT {
                 .extract().path("id");
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
                 .contentType(ContentType.JSON)
@@ -305,6 +323,7 @@ class ArchLensApiIT {
                 .body("phase", equalTo("SHORT_TERM"));
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
                 .contentType(ContentType.JSON)
@@ -324,6 +343,7 @@ class ArchLensApiIT {
     @Order(10)
     void reportHtmlPdfAndImmutableSnapshot() {
         snapshotId = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
         .when()
@@ -334,6 +354,7 @@ class ArchLensApiIT {
                 .extract().path("id");
 
         String html = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "VIEWER")
         .when()
@@ -348,6 +369,7 @@ class ArchLensApiIT {
         assertTrue(html.contains("Limitações"));
         assertTrue(html.contains("Roadmap"));
         publishedHtmlHash = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
         .when()
@@ -357,6 +379,7 @@ class ArchLensApiIT {
                 .extract().path("find { it.id == '" + snapshotId + "' }.contentHash");
 
         byte[] pdf = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "VIEWER")
         .when()
@@ -371,6 +394,7 @@ class ArchLensApiIT {
         assertEquals("%PDF", new String(pdf, 0, 4, StandardCharsets.US_ASCII));
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
         .when()
@@ -380,6 +404,7 @@ class ArchLensApiIT {
                 .body("published", equalTo(true));
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
         .when()
@@ -388,6 +413,7 @@ class ArchLensApiIT {
                 .statusCode(409);
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
                 .contentType(ContentType.JSON)
@@ -398,6 +424,7 @@ class ArchLensApiIT {
                 .statusCode(200);
 
         String htmlAfter = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "VIEWER")
         .when()
@@ -409,6 +436,7 @@ class ArchLensApiIT {
         assertTrue(htmlAfter.contains("Demo Legacy"));
         assertFalse(htmlAfter.contains("Demo Legacy Renamed"));
         assertEquals(publishedHtmlHash, given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "VIEWER")
         .when()
@@ -421,6 +449,7 @@ class ArchLensApiIT {
     @Order(11)
     void completedBlocksImport() {
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ADMIN")
                 .contentType(ContentType.JSON)
@@ -432,6 +461,7 @@ class ArchLensApiIT {
                 .body("status", equalTo("COMPLETED"));
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
                 .header("Idempotency-Key", "after-complete")

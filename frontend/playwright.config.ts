@@ -31,10 +31,12 @@ export default defineConfig({
   webServer: process.env.PLAYWRIGHT_SKIP_WEBSERVER
     ? undefined
     : {
-        command: "npm run dev",
+        // Com a stack real (CI e ensaio local), o build de produção: em `next dev` a compilação sob demanda
+        // derrubava a jornada (ver e2e/servidor-producao.sh). Sem stack real, o servidor de desenvolvimento basta.
+        command: realStack ? "sh e2e/servidor-producao.sh" : "npm run dev",
         url: baseURL,
         reuseExistingServer: !process.env.CI,
-        timeout: 120_000,
+        timeout: realStack ? 300_000 : 120_000,
         env: {
           ...process.env,
           AUTH_LOCAL_ENABLED: process.env.AUTH_LOCAL_ENABLED ?? "true",

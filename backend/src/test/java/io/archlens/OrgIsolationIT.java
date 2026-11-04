@@ -69,6 +69,7 @@ class OrgIsolationIT {
     @Order(1)
     void createAssessmentsInTwoOrgs() {
         assessmentA = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "a")
                 .header("X-Roles", "ADMIN")
                 .header("X-Organization-Id", orgA.toString())
@@ -81,6 +82,7 @@ class OrgIsolationIT {
                 .extract().path("id");
 
         String assessmentB = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "b")
                 .header("X-Roles", "ADMIN")
                 .header("X-Organization-Id", orgB.toString())
@@ -101,6 +103,7 @@ class OrgIsolationIT {
     @Order(2)
     void crossOrgAssessmentIs404() {
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "b")
                 .header("X-Roles", "ADMIN")
                 .header("X-Organization-Id", orgB.toString())
@@ -115,6 +118,7 @@ class OrgIsolationIT {
     @Order(3)
     void importAndFindingStayIsolated() {
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "a")
                 .header("X-Roles", "ARCHITECT")
                 .header("X-Organization-Id", orgA.toString())
@@ -128,6 +132,7 @@ class OrgIsolationIT {
                 .body("findingsCount", greaterThan(0));
 
         findingA = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "a")
                 .header("X-Roles", "VIEWER")
                 .header("X-Organization-Id", orgA.toString())
@@ -138,6 +143,7 @@ class OrgIsolationIT {
                 .extract().path("[0].id");
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "b")
                 .header("X-Roles", "VIEWER")
                 .header("X-Organization-Id", orgB.toString())
@@ -147,6 +153,7 @@ class OrgIsolationIT {
                 .statusCode(404);
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "b")
                 .header("X-Roles", "ARCHITECT")
                 .header("X-Organization-Id", orgB.toString())
@@ -162,6 +169,7 @@ class OrgIsolationIT {
     @Order(4)
     void reportSnapshotCrossOrgIs404() {
         snapshotA = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "a")
                 .header("X-Roles", "ARCHITECT")
                 .header("X-Organization-Id", orgA.toString())
@@ -172,6 +180,7 @@ class OrgIsolationIT {
                 .extract().path("id");
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "b")
                 .header("X-Roles", "VIEWER")
                 .header("X-Organization-Id", orgB.toString())
@@ -181,6 +190,7 @@ class OrgIsolationIT {
                 .statusCode(404);
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "b")
                 .header("X-Roles", "ARCHITECT")
                 .header("X-Organization-Id", orgB.toString())
@@ -190,6 +200,7 @@ class OrgIsolationIT {
                 .statusCode(404);
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "a")
                 .header("X-Roles", "VIEWER")
                 .header("X-Organization-Id", orgA.toString())

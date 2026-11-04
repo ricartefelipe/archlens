@@ -76,6 +76,7 @@ class ImportConcurrencyIT {
 
         String other = withAnalyzerVersion(json, "0.1.0-concurrent");
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
                 .header("Idempotency-Key", keys.get(1))
@@ -112,6 +113,7 @@ class ImportConcurrencyIT {
     void invalidSchemaIsRejectedBeforePersistence() throws Exception {
         String assessmentId = createAssessment("Schema inválido");
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
                 .header("Idempotency-Key", "bad-schema")
@@ -146,6 +148,7 @@ class ImportConcurrencyIT {
                             .uri(URI.create("http://127.0.0.1:" + RestAssured.port
                                     + "/api/v1/assessments/" + assessmentId + "/import"))
                             .timeout(Duration.ofSeconds(30))
+                            .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                             .header("X-User", "tester")
                             .header("X-Roles", "ARCHITECT")
                             .header("Idempotency-Key", key)
@@ -178,6 +181,7 @@ class ImportConcurrencyIT {
 
     private static String createAssessment(String name) {
         return given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ADMIN")
                 .contentType(ContentType.JSON)
@@ -191,6 +195,7 @@ class ImportConcurrencyIT {
 
     private static String importJson(String assessment, String key, String json) {
         return given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "tester")
                 .header("X-Roles", "ARCHITECT")
                 .header("Idempotency-Key", key)

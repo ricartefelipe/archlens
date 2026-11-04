@@ -139,6 +139,9 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     needs: [backend, frontend, analyzer]
+    env:
+      # Segredo do servidor do frontend para a API (headers locais); o mesmo vale para o Compose e o E2E.
+      ARCHLENS_LOCAL_HEADER_AUTH_SECRET: archlens-ci-proxy-secret-32-caracteres-01
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -17,6 +17,7 @@ class LegalHoldDeletionIT {
     @Test
     void legalHoldRejectsDeleteAndKeepsTheAssessment() {
         String assessmentId = given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin")
                 .header("X-Roles", "ADMIN")
                 .contentType(ContentType.JSON)
@@ -28,6 +29,7 @@ class LegalHoldDeletionIT {
                 .extract().path("id");
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin")
                 .header("X-Roles", "ADMIN")
         .when()
@@ -37,6 +39,7 @@ class LegalHoldDeletionIT {
                 .body("detail", containsString("Retenção legal"));
 
         given()
+                .header(TestIdentity.SECRET_HEADER, TestIdentity.SECRET)
                 .header("X-User", "admin")
                 .header("X-Roles", "ADMIN")
         .when()

@@ -102,6 +102,8 @@
 
 **Motivo:** Conveniência local visível e separada de hardening real; evita “prod falso” no Compose.
 
+**Revisão (headers locais com segredo):** uma demonstração publicada com headers locais aceitava qualquer cliente que alcançasse a API como `dev-user` ADMIN. Agora os headers só valem com `X-ArchLens-Proxy-Secret` (segredo compartilhado entre backend e servidor do frontend), a ausência de identidade responde 401 e o navegador usa a ponte `/bff/v1`, que deriva a identidade da sessão.
+
 ## ADR-018: Observabilidade mínima embutida
 
 **Decisão:** CorrelationId + MDC, métricas Micrometer/Prometheus (`archlens_*`), health live/ready com check de regras, logs JSON só em `%prod`. Tracing OTel fica opcional/planejado.
@@ -134,6 +136,6 @@
 
 ## ADR-020: Imagens e Compose com versões fixas + non-root
 
-**Decisão:** Tags pinadas (`postgres:16.6-alpine`, Keycloak `26.0.7`, Node/Temurin fixos), Dockerfiles multi-stage, usuário não-root, volumes nomeados, `down` sem `-v` nos scripts oficiais.
+**Decisão:** Imagens fixadas (PostgreSQL 16 pelo digest em `infra/postgres/Dockerfile`, sem `gosu` e iniciando como `postgres`; Keycloak `26.8.1` pelo digest; Node/Temurin fixos), Dockerfiles multi-stage, usuário não-root, volumes nomeados, `down` sem `-v` nos scripts oficiais.
 
 **Motivo:** Reproducibilidade e menor superfície; preservar dados em reinícios.

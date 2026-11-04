@@ -2,7 +2,9 @@ package io.archlens.application.service;
 
 import io.archlens.infrastructure.persistence.OrganizationEntity;
 import io.archlens.infrastructure.security.HeaderIdentityPolicy;
+import io.archlens.infrastructure.security.IdentityService;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.HttpHeaders;
@@ -13,9 +15,10 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 /**
  * Resolução da organização corrente.
  * <p>
- * Política multi-tenant: se {@code X-Organization-Id} estiver presente, usa essa organização;
- * caso contrário, usa a organização única da instalação (bootstrap). Acesso cruzado por UUID
- * de recursos de outra organização responde {@code 404} (sem revelar existência).
+ * Política multi-tenant: se {@code X-Organization-Id} estiver presente numa requisição do servidor do
+ * frontend (segredo compartilhado correto, fora de produção), usa essa organização; caso contrário, usa
+ * a organização única da instalação (bootstrap). Acesso cruzado por UUID de recursos de outra
+ * organização responde {@code 404} (sem revelar existência).
  */
 @ApplicationScoped
 public class OrganizationService {
@@ -23,11 +26,15 @@ public class OrganizationService {
     @Context
     HttpHeaders headers;
 
+    @Inject
+    IdentityService identityService;
+
     @ConfigProperty(name = "archlens.profile.label", defaultValue = "unspecified")
     String profileLabel;
 
     public OrganizationEntity getOrganization() {
         Optional<UUID> headerOrg = HeaderIdentityPolicy.organizationHeaderTrusted(profileLabel)
+                && identityService.trustedProxyRequest()
                 ? resolveHeaderOrgId()
                 : Optional.empty();
         if (headerOrg.isPresent()) {

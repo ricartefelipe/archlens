@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getApiBaseUrl, parseProblemDetails } from "@/lib/api/client";
+import { applyIdentityPolicy, getApiBaseUrl, parseProblemDetails } from "@/lib/api/client";
 
 describe("getApiBaseUrl", () => {
   afterEach(() => {
@@ -15,6 +15,52 @@ describe("getApiBaseUrl", () => {
   it("cai na URL pública quando não há URL interna", () => {
     vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://localhost:8080/api/v1");
     expect(getApiBaseUrl()).toBe("http://localhost:8080/api/v1");
+  });
+
+  it("no navegador usa a ponte do próprio frontend, nunca a API direta", () => {
+    vi.stubGlobal("window", {});
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://localhost:8080/api/v1");
+    try {
+      expect(getApiBaseUrl()).toBe("/bff/v1");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe("applyIdentityPolicy", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("no navegador remove identidade e token", () => {
+    expect(
+      applyIdentityPolicy(
+        {
+          Accept: "application/json",
+          "X-User": "admin",
+          "X-Roles": "ADMIN",
+          "X-Organization-Id": "o1",
+          Authorization: "Bearer t",
+          "X-Correlation-Id": "c1",
+        },
+        true,
+      ),
+    ).toEqual({ Accept: "application/json", "X-Correlation-Id": "c1" });
+  });
+
+  it("no servidor, identidade local segue com o segredo compartilhado", () => {
+    vi.stubEnv("ARCHLENS_LOCAL_HEADER_AUTH_SECRET", "segredo-compartilhado-com-o-backend-01");
+    expect(applyIdentityPolicy({ "X-User": "architect", "X-Roles": "ARCHITECT" }, false)).toEqual({
+      "X-User": "architect",
+      "X-Roles": "ARCHITECT",
+      "X-ArchLens-Proxy-Secret": "segredo-compartilhado-com-o-backend-01",
+    });
+  });
+
+  it("no servidor, chamada OIDC não recebe o segredo", () => {
+    vi.stubEnv("ARCHLENS_LOCAL_HEADER_AUTH_SECRET", "segredo-compartilhado-com-o-backend-01");
+    expect(applyIdentityPolicy({ Authorization: "Bearer t" }, false)).toEqual({ Authorization: "Bearer t" });
   });
 });
 

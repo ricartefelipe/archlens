@@ -54,3 +54,20 @@ export function localPassword(user: "admin" | "architect" | "viewer"): string {
   if (!value) throw new Error(`senha local de ${user} não definida no ambiente do E2E`);
   return value;
 }
+
+/** URL direta da API (fora do navegador), usada pelos testes para conferir o backend. */
+export function apiUrl(): string {
+  return process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
+}
+
+/**
+ * Identidade local apresentada direto à API, como faz o servidor do frontend: só vale com o segredo
+ * compartilhado (`ARCHLENS_LOCAL_HEADER_AUTH_SECRET`), que o navegador não conhece.
+ */
+export function serverIdentity(user: string, roles: string): Record<string, string> {
+  const secret = process.env.ARCHLENS_LOCAL_HEADER_AUTH_SECRET;
+  if (!secret) {
+    throw new Error("Defina ARCHLENS_LOCAL_HEADER_AUTH_SECRET (o mesmo valor do backend) para o E2E.");
+  }
+  return { "X-ArchLens-Proxy-Secret": secret, "X-User": user, "X-Roles": roles };
+}
