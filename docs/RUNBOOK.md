@@ -127,6 +127,18 @@ Não use `down -v` no meio do ensaio, nem no projeto Compose de outra pessoa.
 
 Excluir uma avaliação (ADMIN, com confirmação na UI) remove inventário, achados, questionário, scores, roadmap, importações e o vínculo do relatório. O PDF deixa de ser baixável na hora. Se a limpeza do blob falhar, repita `POST /api/v1/maintenance/blob-cleanup`. Com retenção de auditoria, os eventos continuam em `GET /api/v1/audit`.
 
+## Atualizar as imagens de Postgres e Keycloak
+
+O Postgres local passou de `16.6-alpine` para o 16 mais recente sem `gosu` (`infra/postgres/Dockerfile`, mesmo usuário `postgres`, uid 70). É a mesma versão principal, então o volume `pgdata` existente é aberto sem migração:
+
+```bash
+docker compose -f infra/docker-compose.yml up -d --build   # sem -v: o volume é preservado
+```
+
+Ensaio de 04/11/2026: tabela criada num volume do 16.6, o 16.15 sem `gosu` subiu sobre o mesmo volume e leu o dado; um volume novo também inicializa.
+
+O Keycloak passou de `26.0.7` para `26.8.1`. Neste ambiente ele roda em `start-dev`, sem volume: o realm `archlens` é importado de `infra/keycloak/realm-archlens.json` a cada subida, e não há base para migrar. O administrador temporário do master agora vem de `KC_BOOTSTRAP_ADMIN_USERNAME`/`KC_BOOTSTRAP_ADMIN_PASSWORD` (`KEYCLOAK_ADMIN` foi descontinuado). Num Keycloak com banco persistente, faça backup do banco antes; a 26.8 migra o esquema na primeira subida.
+
 ## Reinício controlado
 
 ```bash

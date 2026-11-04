@@ -19,7 +19,7 @@ Versões lidas dos arquivos do repositório, não de um relatório de licença.
 | `analyzer/pom.xml` | Jackson 2.18.2, picocli 4.7.6, json-schema-validator 1.5.6, JUnit 5.11.4 |
 | `backend/pom.xml` | Quarkus BOM 3.33.2, Testcontainers BOM 1.20.4 |
 | `frontend/package.json` | Next.js 15.5.28, React 19.1.0, next-auth 5.0.0-beta.32, mermaid 11.16.1; dev: Playwright, Vitest 3, ESLint, Tailwind 4, TypeScript 5 |
-| Imagens citadas em `docs/DECISIONS.md` | `postgres:16.6-alpine`, Keycloak `26.0.7`, Temurin 21, Node 22 |
+| Imagens citadas em `docs/DECISIONS.md` | `postgres:16-alpine` (por digest, sem `gosu`), Keycloak `26.8.1`, Temurin 21, Node 22 |
 
 Antes de distribuir, o proprietário precisa de um relatório de licenças transitivas (por exemplo o plugin de licenças do Maven e `license-checker` no frontend) e da compatibilidade com a licença que ele escolher.
 

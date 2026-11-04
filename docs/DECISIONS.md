@@ -136,6 +136,6 @@
 
 ## ADR-020: Imagens e Compose com versões fixas + non-root
 
-**Decisão:** Tags pinadas (`postgres:16.6-alpine`, Keycloak `26.0.7`, Node/Temurin fixos), Dockerfiles multi-stage, usuário não-root, volumes nomeados, `down` sem `-v` nos scripts oficiais.
+**Decisão:** Imagens fixadas (PostgreSQL 16 pelo digest em `infra/postgres/Dockerfile`, sem `gosu` e iniciando como `postgres`; Keycloak `26.8.1` pelo digest; Node/Temurin fixos), Dockerfiles multi-stage, usuário não-root, volumes nomeados, `down` sem `-v` nos scripts oficiais.
 
 **Motivo:** Reproducibilidade e menor superfície; preservar dados em reinícios.
