@@ -31,7 +31,7 @@ Atualizado em 2026-07-17 (Prompt 4/5 — hardening).
 | XXE via POM | Alta | `MavenPomParser` com DTD/entidades externas desabilitadas |
 | Symlink escape no scan | Alta | `SafeFileWalker` canônico; não segue symlink fora da raiz |
 | Vazamento de segredo no JSON/logs | Alta | Sem valor; hash contextual; CI bloqueia vazamento do segredo fictício; logs sem payload |
-| Elevação de papel | Alta | RBAC no backend; prod sem headers `X-User`/`X-Roles`; OIDC + roles de realm |
+| Elevação de papel | Alta | RBAC no backend; prod sem headers `X-User`/`X-Roles`; fora de prod, headers só com o segredo do servidor do frontend (sem ele, 401; sem papel, VIEWER); navegador só fala com a ponte `/bff/v1`; OIDC + roles de realm |
 | Acesso cruzado entre orgs | Alta | Filtro por `organization_id`; 404 em acesso cruzado |
 | Exfiltração por LLM | Alta | `LLM_ENABLED=false` default; adapter não envia código/segredos |
 | Replay / duplo import | Média | `Idempotency-Key` + contentHash |

@@ -12,7 +12,7 @@
 
 O Compose padrão usa **demo**, não produção. Overlay de exemplo: `infra/docker-compose.prod.example.yml`. Para subir a demo com OIDC real (backend validando JWT do Keycloak do Compose, headers locais desligados): `docker compose -f infra/docker-compose.yml -f infra/docker-compose.oidc.yml up -d --build`; o E2E correspondente é `bash scripts/e2e-oidc.sh`.
 
-Em qualquer perfil, `/api/v1` exige identidade. A exceção é `GET /api/v1/health`. A prontidão do processo continua em `/q/health`. No perfil `local` ou `demo`, a ausência de header vira o operador local `dev-user` com papel ADMIN; isso não vale para uma porta exposta fora da máquina do operador. Em `production` o header é ignorado e, sem token OIDC, a API responde 401.
+Em qualquer perfil, `/api/v1` exige identidade. A exceção é `GET /api/v1/health`. A prontidão do processo continua em `/q/health`. Nos perfis com headers locais (`local`, `demo`, `development`, `test`), `X-User`, `X-Roles` e `X-Organization-Id` só valem quando a requisição traz `X-ArchLens-Proxy-Secret` igual a `ARCHLENS_LOCAL_HEADER_AUTH_SECRET`, segredo que só o servidor do frontend conhece. Sem ele, com ele errado ou sem `X-User`, a API responde 401; sem `X-Roles`, o papel é VIEWER. Não existe mais identidade padrão. O navegador nunca chama a API: usa a ponte `/bff/v1` do frontend, que confere a sessão e repassa a identidade. O backend não sobe com headers locais ligados e segredo ausente ou com menos de 32 caracteres. Em `production` os headers são ignorados e, sem token OIDC, a API responde 401.
 
 ## Variáveis críticas (backend)
 
@@ -20,6 +20,7 @@ Em qualquer perfil, `/api/v1` exige identidade. A exceção é `GET /api/v1/heal
 |----------|------|----------|
 | `QUARKUS_PROFILE` | `demo` | `prod` |
 | `ARCHLENS_LOCAL_HEADER_AUTH` | `true` | `false` (forçado) |
+| `ARCHLENS_LOCAL_HEADER_AUTH_SECRET` | obrigatório com headers locais, ≥ 32 caracteres, o mesmo do frontend | não usado |
 | `ARCHLENS_OIDC_ENABLED` | `false` | `true` (forçado) |
 | `ARCHLENS_OIDC_URL` / `ARCHLENS_OIDC_ISSUER` | localhost Keycloak | IdP real HTTPS |
 | `ARCHLENS_OIDC_CLIENT_SECRET` | fictício | secret real |
@@ -43,6 +44,7 @@ Em qualquer perfil, `/api/v1` exige identidade. A exceção é `GET /api/v1/heal
 | `KEYCLOAK_*` | localhost | IdP real |
 | `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8080/api/v1` | URL pública da API (browser) |
 | `ARCHLENS_API_INTERNAL_URL` | `http://backend:8080/api/v1` (Compose) | URL server-side no container; omitir no `npm run dev` local |
+| `ARCHLENS_LOCAL_HEADER_AUTH_SECRET` | o mesmo do backend (só no servidor, nunca em `NEXT_PUBLIC_*`) | não usado (OIDC) |
 
 ## Endpoints de observabilidade
 

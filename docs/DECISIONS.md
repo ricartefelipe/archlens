@@ -102,6 +102,8 @@
 
 **Motivo:** Conveniência local visível e separada de hardening real; evita “prod falso” no Compose.
 
+**Revisão (headers locais com segredo):** uma demonstração publicada com headers locais aceitava qualquer cliente que alcançasse a API como `dev-user` ADMIN. Agora os headers só valem com `X-ArchLens-Proxy-Secret` (segredo compartilhado entre backend e servidor do frontend), a ausência de identidade responde 401 e o navegador usa a ponte `/bff/v1`, que deriva a identidade da sessão.
+
 ## ADR-018: Observabilidade mínima embutida
 
 **Decisão:** CorrelationId + MDC, métricas Micrometer/Prometheus (`archlens_*`), health live/ready com check de regras, logs JSON só em `%prod`. Tracing OTel fica opcional/planejado.
